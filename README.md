@@ -83,6 +83,7 @@ Cmm/
 │   │           └── stats.html                # 📊 출석 통계 & 캘린더 대시보드
 ├── build.gradle                              # Gradle 빌드 및 의존성 설정
 ├── gradlew.bat                               # Gradle 래퍼 실행 파일
+├── ENTITY_DEFINITIONS.md                     # 📐 엔티티 및 DB 테이블 정의서
 └── README.md                                 # 프로젝트 기술 명세서
 ```
 
