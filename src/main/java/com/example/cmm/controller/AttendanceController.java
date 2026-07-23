@@ -145,18 +145,68 @@ public class AttendanceController {
     private double calculateEuclideanDistance(String desc1, String desc2) {
         if (desc1 == null || desc2 == null) return Double.MAX_VALUE;
         try {
-            String[] a1 = desc1.replace("[", "").replace("]", "").split(",");
-            String[] a2 = desc2.replace("[", "").replace("]", "").split(",");
-            if (a1.length != a2.length || a1.length == 0) return Double.MAX_VALUE;
-            double sum = 0.0;
-            for (int i = 0; i < a1.length; i++) {
-                double diff = Double.parseDouble(a1[i].trim()) - Double.parseDouble(a2[i].trim());
-                sum += diff * diff;
+            List<double[]> list1 = parseDescriptorJson(desc1);
+            List<double[]> list2 = parseDescriptorJson(desc2);
+            if (list1.isEmpty() || list2.isEmpty()) return Double.MAX_VALUE;
+
+            double minDistance = Double.MAX_VALUE;
+            for (double[] v1 : list1) {
+                for (double[] v2 : list2) {
+                    if (v1.length == v2.length && v1.length > 0) {
+                        double sum = 0.0;
+                        for (int i = 0; i < v1.length; i++) {
+                            double diff = v1[i] - v2[i];
+                            sum += diff * diff;
+                        }
+                        double dist = Math.sqrt(sum);
+                        if (dist < minDistance) {
+                            minDistance = dist;
+                        }
+                    }
+                }
             }
-            return Math.sqrt(sum);
+            return minDistance;
         } catch (Exception e) {
             return Double.MAX_VALUE;
         }
+    }
+
+    private List<double[]> parseDescriptorJson(String jsonStr) {
+        List<double[]> result = new ArrayList<>();
+        if (jsonStr == null || jsonStr.trim().isEmpty()) return result;
+        String trimmed = jsonStr.trim();
+        try {
+            if (trimmed.startsWith("[[") || trimmed.startsWith("[ [")) {
+                // Multi-pose descriptors: [[...], [...]]
+                String inner = trimmed.substring(1, trimmed.length() - 1);
+                String[] items = inner.split("\\]\\s*,\\s*\\[");
+                for (String item : items) {
+                    String clean = item.replace("[", "").replace("]", "").trim();
+                    if (!clean.isEmpty()) {
+                        String[] parts = clean.split(",");
+                        double[] arr = new double[parts.length];
+                        for (int i = 0; i < parts.length; i++) {
+                            arr[i] = Double.parseDouble(parts[i].trim());
+                        }
+                        result.add(arr);
+                    }
+                }
+            } else {
+                // Single-pose descriptor: [0.1, 0.2, ...]
+                String clean = trimmed.replace("[", "").replace("]", "").trim();
+                if (!clean.isEmpty()) {
+                    String[] parts = clean.split(",");
+                    double[] arr = new double[parts.length];
+                    for (int i = 0; i < parts.length; i++) {
+                        arr[i] = Double.parseDouble(parts[i].trim());
+                    }
+                    result.add(arr);
+                }
+            }
+        } catch (Exception e) {
+            // Ignore parse errors
+        }
+        return result;
     }
 
     // API: Get all members for client-side face matching

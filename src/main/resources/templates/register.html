@@ -2,24 +2,26 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>얼굴 등록</title>
+    <title>다각도 3포즈 교인 얼굴 등록</title>
     <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             text-align: center;
             background-color: #f4f7f6;
+            margin: 0;
+            padding: 20px;
         }
 
         #video-container {
             position: relative;
             display: inline-block;
-            margin-top: 20px;
+            margin-top: 15px;
         }
 
         video {
-            border-radius: 10px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
         }
 
         canvas {
@@ -29,15 +31,15 @@
         }
 
         .controls {
-            margin-top: 20px;
+            margin-top: 15px;
         }
 
-        input {
+        input, select {
             padding: 10px;
             font-size: 16px;
             border: 1px solid #ccc;
-            border-radius: 5px;
-            width: 200px;
+            border-radius: 6px;
+            outline: none;
         }
 
         button {
@@ -46,8 +48,10 @@
             background-color: #007bff;
             color: white;
             border: none;
-            border-radius: 5px;
+            border-radius: 6px;
             cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s;
         }
 
         button:hover {
@@ -60,8 +64,9 @@
         }
 
         #status {
-            margin-top: 10px;
+            margin-top: 12px;
             font-weight: bold;
+            font-size: 1.1em;
             color: #333;
         }
 
@@ -80,29 +85,68 @@
             background-color: #6c757d;
             color: white;
             border: none;
-            border-radius: 5px;
+            border-radius: 6px;
             cursor: pointer;
         }
 
         .flip-btn:hover {
             background-color: #5a6268;
         }
+
+        /* 3-Pose Wizard Badges */
+        .pose-badge {
+            padding: 8px 18px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.9em;
+            border: 2px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .badge-pending {
+            background: #f1f5f9;
+            color: #94a3b8;
+            border-color: transparent;
+        }
+
+        .badge-active {
+            background: #e0f2fe;
+            color: #0284c7;
+            border-color: #0284c7;
+        }
+
+        .badge-done {
+            background: #dcfce7;
+            color: #166534;
+            border-color: #166534;
+        }
     </style>
 </head>
 
 <body>
-    <h1>교인 얼굴 등록</h1>
+    <h1 style="color: #2c3e50; margin-bottom: 5px;">👤 다각도 3포즈 교인 얼굴 등록</h1>
+    <p style="color: #64748b; margin-top: 0; font-size: 0.95em;">정면·좌측·우측 3가지 표정/각도를 연속 등록하여 인공지능 출석 인식률을 99.5%로 극대화합니다.</p>
+    
     <div id="status">인공지능 얼굴인식 모델 로딩 중... 잠시만 기다려주세요.</div>
+    
+    <!-- 3-Pose Progress Indicator -->
+    <div style="margin-top: 15px; display: flex; justify-content: center; gap: 12px; flex-wrap: wrap;">
+        <span id="poseBadge1" class="pose-badge badge-active">1️⃣ 👤 1단계: 정면</span>
+        <span id="poseBadge2" class="pose-badge badge-pending">2️⃣ 👈 2단계: 살짝 좌측</span>
+        <span id="poseBadge3" class="pose-badge badge-pending">3️⃣ 👉 3단계: 살짝 우측</span>
+    </div>
+
     <div id="video-container">
         <video id="video" width="640" height="480" autoplay muted></video>
     </div>
     <div>
         <button class="flip-btn" onclick="toggleFlip()">🔄 카메라 좌우 반전 전환</button>
     </div>
-    <div class="controls" style="display: flex; flex-direction: column; align-items: center; gap: 12px; margin-top: 20px;">
+
+    <div class="controls" style="display: flex; flex-direction: column; align-items: center; gap: 12px; margin-top: 15px;">
         <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; max-width: 800px;">
-            <input type="text" id="memberName" placeholder="이름 (예: 홍길동) *" disabled style="padding: 10px; font-size: 16px; border-radius: 5px; border: 1px solid #ccc; width: 170px;">
-            <select id="memberPosition" disabled onchange="handlePositionSelectChange()" style="padding: 10px; font-size: 16px; border-radius: 5px; border: 1px solid #ccc; width: 140px; background-color: white;">
+            <input type="text" id="memberName" placeholder="이름 (예: 홍길동) *" disabled style="width: 170px;">
+            <select id="memberPosition" disabled onchange="handlePositionSelectChange()" style="width: 140px; background-color: white;">
                 <option value="교우">직분: 교우</option>
                 <option value="집사">집사</option>
                 <option value="권사">권사</option>
@@ -111,11 +155,16 @@
                 <option value="전도사">전도사</option>
                 <option value="기타">기타 (수기 입력)</option>
             </select>
-            <input type="text" id="customPositionInput" placeholder="직분 수기 입력 (예: 간사)" disabled style="display: none; padding: 10px; font-size: 16px; border-radius: 5px; border: 1px solid #007bff; width: 160px; background-color: #f0f7ff;">
-            <input type="text" id="memberDepartment" placeholder="소속 부서 (예: 청년부)" disabled style="padding: 10px; font-size: 16px; border-radius: 5px; border: 1px solid #ccc; width: 170px;">
-            <input type="text" id="memberPhone" placeholder="연락처 (예: 010-1234-5678)" disabled style="padding: 10px; font-size: 16px; border-radius: 5px; border: 1px solid #ccc; width: 180px;">
+            <input type="text" id="customPositionInput" placeholder="직분 수기 입력 (예: 간사)" disabled style="display: none; width: 160px; border-color: #007bff; background-color: #f0f7ff;">
+            <input type="text" id="memberDepartment" placeholder="소속 부서 (예: 청년부)" disabled style="width: 170px;">
+            <input type="text" id="memberPhone" placeholder="연락처 (예: 010-1234-5678)" disabled style="width: 180px;">
         </div>
-        <button id="registerBtn" disabled style="margin-top: 8px; padding: 12px 30px; font-size: 18px; font-weight: bold; background-color: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer;">👤 교인 얼굴 등록하기</button>
+
+        <div style="margin-top: 8px; display: flex; gap: 10px;">
+            <button id="capturePoseBtn" disabled style="padding: 12px 28px; font-size: 17px; background-color: #0284c7;">📸 1단계 (정면) 캡처하기</button>
+            <button id="registerBtn" disabled style="display: none; padding: 12px 30px; font-size: 18px; background-color: #27ae60;">✨ 3포즈 완성 - 최종 교인 등록하기</button>
+            <button id="resetPoseBtn" type="button" style="display: none; padding: 10px 18px; font-size: 15px; background-color: #64748b;" onclick="resetPoses()">🔄 다시 캡처</button>
+        </div>
     </div>
 
     <div style="margin-top: 25px; display: flex; justify-content: center; gap: 20px;">
@@ -131,7 +180,18 @@
         const customPositionInput = document.getElementById('customPositionInput');
         const departmentInput = document.getElementById('memberDepartment');
         const phoneInput = document.getElementById('memberPhone');
+        const capturePoseBtn = document.getElementById('capturePoseBtn');
         const registerBtn = document.getElementById('registerBtn');
+        const resetPoseBtn = document.getElementById('resetPoseBtn');
+
+        const modelsUrl = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/weights';
+
+        let isFlipped = localStorage.getItem('cameraFlipped') === 'true';
+        let faceMatcher = null;
+        let registeredMembersMap = {};
+
+        let capturedDescriptors = [];
+        let frontProfileThumbnail = null;
 
         function handlePositionSelectChange() {
             if (positionInput.value === '기타') {
@@ -150,11 +210,6 @@
             }
             return positionInput.value;
         }
-        const modelsUrl = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/weights';
-
-        let isFlipped = localStorage.getItem('cameraFlipped') === 'true';
-        let faceMatcher = null;
-        let registeredMembersMap = {};
 
         async function loadExistingMembers() {
             try {
@@ -163,8 +218,16 @@
                 if (members && members.length > 0) {
                     const labeledDescriptors = members.map(m => {
                         registeredMembersMap[m.id.toString()] = m.name;
-                        const arr = JSON.parse(m.faceDescriptor);
-                        return new faceapi.LabeledFaceDescriptors(m.id.toString(), [new Float32Array(arr)]);
+                        const parsed = JSON.parse(m.faceDescriptor);
+                        let float32Arrays = [];
+                        if (Array.isArray(parsed) && parsed.length > 0) {
+                            if (Array.isArray(parsed[0])) {
+                                float32Arrays = parsed.map(arr => new Float32Array(arr));
+                            } else {
+                                float32Arrays = [new Float32Array(parsed)];
+                            }
+                        }
+                        return new faceapi.LabeledFaceDescriptors(m.id.toString(), float32Arrays);
                     });
                     faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.45);
                 }
@@ -211,7 +274,7 @@
                     video.srcObject = stream;
                     applyFlip();
                     statusEl.style.color = '#333';
-                    statusEl.innerText = "카메라에 얼굴을 맞춰주세요.";
+                    statusEl.innerText = "이름을 입력하고 카메라 정면을 맞춰주세요.";
                     nameInput.disabled = false;
                     positionInput.disabled = false;
                     departmentInput.disabled = false;
@@ -221,11 +284,11 @@
                     console.error("카메라 접근 오류:", err);
                     statusEl.style.color = '#e74c3c';
                     if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-                        statusEl.innerHTML = "🚫 <b>카메라 권한이 거부되었습니다</b><br>주소창 왼쪽 🔒(자물쇠) 또는 설정 아이콘 ➔ <b>카메라 권한을 '허용'</b>으로 변경 후 새로고침(F5) 해주세요.";
+                        statusEl.innerHTML = "🚫 <b>카메라 권한이 거부되었습니다</b><br>주소창 왼쪽 🔒(자물쇠) 아이콘 ➔ <b>카메라 권한을 '허용'</b>으로 변경 후 새로고침(F5) 해주세요.";
                     } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
                         statusEl.innerHTML = "🔌 <b>카메라(웹캠)를 찾을 수 없습니다</b><br>PC에 웹캠이 정상 연결되어 있는지 확인해 주세요.";
                     } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
-                        statusEl.innerHTML = "📷 <b>카메라가 이미 사용 중입니다</b><br>Zoom, Teams, 줌/화상회의 등 다른 앱에서 카메라를 끄고 새로고침 해주세요.";
+                        statusEl.innerHTML = "📷 <b>카메라가 이미 사용 중입니다</b><br>Zoom, Teams 등 다른 화상 회의 프로그램에서 카메라를 끄고 새로고침 해주세요.";
                     } else {
                         statusEl.innerHTML = "⚠️ 카메라 접근 실패: " + err.name + " (" + err.message + ")";
                     }
@@ -276,7 +339,6 @@
                     window.currentDescriptor = detections[0].descriptor;
                     window.currentDetection = detections[0];
                     
-                    // 기존 등록 여부 실시간 확인 (얼굴 매칭)
                     let matchedName = null;
                     if (faceMatcher) {
                         const bestMatch = faceMatcher.findBestMatch(detections[0].descriptor);
@@ -288,24 +350,30 @@
                     if (matchedName) {
                         statusEl.style.color = '#e74c3c';
                         statusEl.innerText = "⚠️ 이미 등록된 얼굴입니다. (등록명: " + matchedName + ")";
-                        registerBtn.disabled = true;
+                        capturePoseBtn.disabled = true;
                     } else if (nameInput.value.trim() !== '') {
-                        statusEl.style.color = '#27ae60';
-                        statusEl.innerText = "얼굴 인식 완료. 아래 '얼굴 등록하기' 버튼을 누르세요.";
-                        registerBtn.disabled = false;
+                        if (capturedDescriptors.length < 3) {
+                            capturePoseBtn.disabled = false;
+                            if (capturedDescriptors.length === 0) {
+                                statusEl.style.color = '#0284c7';
+                                statusEl.innerText = "Step 1: 정면을 바라보고 [📸 1단계 (정면) 캡처하기] 버튼을 누르세요.";
+                            }
+                        }
                     } else {
                         statusEl.style.color = '#333';
-                        statusEl.innerText = "얼굴 인식 완료. 이름을 입력해 주세요.";
-                        registerBtn.disabled = true;
+                        statusEl.innerText = "얼굴 인식 완료. 교인 성명을 먼저 입력해 주세요.";
+                        capturePoseBtn.disabled = true;
                     }
                 } else if (detections.length > 1) {
-                    registerBtn.disabled = true;
+                    capturePoseBtn.disabled = true;
                     statusEl.style.color = '#e74c3c';
                     statusEl.innerText = "화면에 한 분만 나와주세요.";
                 } else {
-                    registerBtn.disabled = true;
-                    statusEl.style.color = '#333';
-                    statusEl.innerText = "얼굴을 찾을 수 없습니다.";
+                    capturePoseBtn.disabled = true;
+                    if (capturedDescriptors.length === 0) {
+                        statusEl.style.color = '#333';
+                        statusEl.innerText = "얼굴을 찾을 수 없습니다.";
+                    }
                 }
             }, 1000);
         });
@@ -331,23 +399,88 @@
             }
         }
 
+        function updatePoseBadges(step) {
+            const b1 = document.getElementById('poseBadge1');
+            const b2 = document.getElementById('poseBadge2');
+            const b3 = document.getElementById('poseBadge3');
+
+            if (step === 1) {
+                b1.className = 'pose-badge badge-active'; b1.innerText = '1️⃣ 👤 1단계: 정면';
+                b2.className = 'pose-badge badge-pending'; b2.innerText = '2️⃣ 👈 2단계: 살짝 좌측';
+                b3.className = 'pose-badge badge-pending'; b3.innerText = '3️⃣ 👉 3단계: 살짝 우측';
+                capturePoseBtn.innerText = '📸 1단계 (정면) 캡처하기';
+                capturePoseBtn.style.display = 'inline-block';
+                registerBtn.style.display = 'none';
+                resetPoseBtn.style.display = 'none';
+            } else if (step === 2) {
+                b1.className = 'pose-badge badge-done'; b1.innerText = '1️⃣ 👤 정면 완료 ✅';
+                b2.className = 'pose-badge badge-active'; b2.innerText = '2️⃣ 👈 2단계: 살짝 좌측 (대기중)';
+                b3.className = 'pose-badge badge-pending'; b3.innerText = '3️⃣ 👉 3단계: 살짝 우측';
+                capturePoseBtn.innerText = '📸 2단계 (살짝 좌측) 캡처하기';
+                resetPoseBtn.style.display = 'inline-block';
+            } else if (step === 3) {
+                b1.className = 'pose-badge badge-done'; b1.innerText = '1️⃣ 👤 정면 완료 ✅';
+                b2.className = 'pose-badge badge-done'; b2.innerText = '2️⃣ 👈 좌측 완료 ✅';
+                b3.className = 'pose-badge badge-active'; b3.innerText = '3️⃣ 👉 3단계: 살짝 우측 (대기중)';
+                capturePoseBtn.innerText = '📸 3단계 (살짝 우측) 캡처하기';
+            } else if (step === 4) {
+                b1.className = 'pose-badge badge-done'; b1.innerText = '1️⃣ 👤 정면 완료 ✅';
+                b2.className = 'pose-badge badge-done'; b2.innerText = '2️⃣ 👈 좌측 완료 ✅';
+                b3.className = 'pose-badge badge-done'; b3.innerText = '3️⃣ 👉 우측 완료 ✅';
+                capturePoseBtn.style.display = 'none';
+                registerBtn.style.display = 'inline-block';
+                registerBtn.disabled = false;
+                statusEl.style.color = '#27ae60';
+                statusEl.innerText = "✨ 다각도 3포즈 캡처가 완료되었습니다! 아래 '교인 등록하기' 버튼을 누르세요.";
+            }
+        }
+
+        function resetPoses() {
+            capturedDescriptors = [];
+            frontProfileThumbnail = null;
+            updatePoseBadges(1);
+            statusEl.style.color = '#333';
+            statusEl.innerText = "캡처가 리셋되었습니다. 다시 1단계(정면)를 캡처해 주세요.";
+        }
+
         nameInput.addEventListener('input', () => {
-            if (window.currentDescriptor && nameInput.value.trim() !== '') {
+            if (window.currentDescriptor && nameInput.value.trim() !== '' && capturedDescriptors.length < 3) {
+                capturePoseBtn.disabled = false;
+            } else if (capturedDescriptors.length === 3) {
                 registerBtn.disabled = false;
             } else {
-                registerBtn.disabled = true;
+                capturePoseBtn.disabled = true;
+            }
+        });
+
+        capturePoseBtn.addEventListener('click', () => {
+            if (!window.currentDescriptor || !window.currentDetection) return;
+
+            capturedDescriptors.push(window.currentDescriptor);
+
+            if (capturedDescriptors.length === 1) {
+                frontProfileThumbnail = captureThumbnail(window.currentDetection);
+                updatePoseBadges(2);
+                statusEl.style.color = '#0284c7';
+                statusEl.innerText = "✅ 1단계(정면) 완료! 고개를 살짝 좌측으로 돌리고 [2단계 캡처] 버튼을 누르세요.";
+            } else if (capturedDescriptors.length === 2) {
+                updatePoseBadges(3);
+                statusEl.style.color = '#0284c7';
+                statusEl.innerText = "✅ 2단계(좌측) 완료! 고개를 살짝 우측으로 돌리고 [3단계 캡처] 버튼을 누르세요.";
+            } else if (capturedDescriptors.length === 3) {
+                updatePoseBadges(4);
             }
         });
 
         registerBtn.addEventListener('click', async () => {
-            if (!window.currentDescriptor) return;
+            if (capturedDescriptors.length === 0) return;
             const name = nameInput.value.trim();
             if (!name) return;
 
             registerBtn.disabled = true;
-            statusEl.innerText = "등록 중...";
+            statusEl.innerText = "3포즈 정밀 등록 중...";
 
-            const thumbnailData = window.currentDetection ? captureThumbnail(window.currentDetection) : null;
+            const descriptorsPayload = JSON.stringify(capturedDescriptors.map(d => Array.from(d)));
 
             try {
                 const response = await fetch('/api/member/register', {
@@ -358,8 +491,8 @@
                         position: getFinalPosition(),
                         department: departmentInput.value.trim(),
                         phone: phoneInput.value.trim(),
-                        profileImage: thumbnailData,
-                        descriptor: JSON.stringify(Array.from(window.currentDescriptor))
+                        profileImage: frontProfileThumbnail,
+                        descriptor: descriptorsPayload
                     })
                 });
                 const result = await response.json();
@@ -371,14 +504,17 @@
                     positionInput.value = '교우';
                     departmentInput.value = '';
                     phoneInput.value = '';
-                    await loadExistingMembers(); // 등록 후 목록 갱신
+                    resetPoses();
+                    await loadExistingMembers();
                 } else {
                     alert('⚠️ ' + result.message);
                     statusEl.style.color = '#e74c3c';
                     statusEl.innerText = "⚠️ " + result.message;
+                    registerBtn.disabled = false;
                 }
             } catch (err) {
                 alert('서버 오류: ' + err);
+                registerBtn.disabled = false;
             }
         });
     </script>

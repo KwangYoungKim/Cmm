@@ -198,9 +198,19 @@
 
                 const labeledDescriptors = members.map(member => {
                     memberNamesMap[member.id.toString()] = member.name;
-                    const descriptorArray = JSON.parse(member.faceDescriptor);
-                    const float32Array = new Float32Array(descriptorArray);
-                    return new faceapi.LabeledFaceDescriptors(member.id.toString(), [float32Array]);
+                    const parsed = JSON.parse(member.faceDescriptor);
+                    let float32Arrays = [];
+
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        if (Array.isArray(parsed[0])) {
+                            // 다각도(Multi-pose) 3포즈 복수 벡터
+                            float32Arrays = parsed.map(arr => new Float32Array(arr));
+                        } else {
+                            // 단일(Single-pose) 벡터
+                            float32Arrays = [new Float32Array(parsed)];
+                        }
+                    }
+                    return new faceapi.LabeledFaceDescriptors(member.id.toString(), float32Arrays);
                 });
 
                 // 인지 정확도를 높이기 위해 임계값을 0.45로 엄격하게 적용하여 미등록자 오인식 차단
