@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>얼굴 등록</title>
+    <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            text-align: center;
+            background-color: #f4f7f6;
+        }
+
+        #video-container {
+            position: relative;
+            display: inline-block;
+            margin-top: 20px;
+        }
+
+        video {
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        .controls {
+            margin-top: 20px;
+        }
+
+        input {
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            width: 200px;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
+        #status {
+            margin-top: 10px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .link {
+            display: inline-block;
+            margin-top: 20px;
+            color: #007bff;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .flip-btn {
+            margin-top: 10px;
+            padding: 8px 16px;
+            font-size: 14px;
+            background-color: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .flip-btn:hover {
+            background-color: #5a6268;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>교인 얼굴 등록</h1>
+    <div id="status">인공지능 얼굴인식 모델 로딩 중... 잠시만 기다려주세요.</div>
+    <div id="video-container">
+        <video id="video" width="640" height="480" autoplay muted></video>
+    </div>
+    <div>
+        <button class="flip-btn" onclick="toggleFlip()">🔄 카메라 좌우 반전 전환</button>
+    </div>
+    <div class="controls" style="display: flex; flex-direction: column; align-items: center; gap: 12px; margin-top: 20px;">
+        <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; max-width: 800px;">
+            <input type="text" id="memberName" placeholder="이름 (예: 홍길동) *" disabled style="padding: 10px; font-size: 16px; border-radius: 5px; border: 1px solid #ccc; width: 170px;">
+            <select id="memberPosition" disabled onchange="handlePositionSelectChange()" style="padding: 10px; font-size: 16px; border-radius: 5px; border: 1px solid #ccc; width: 140px; background-color: white;">
+                <option value="교우">직분: 교우</option>
+                <option value="집사">집사</option>
+                <option value="권사">권사</option>
+                <option value="장로">장로</option>
+                <option value="목사">목사</option>
+                <option value="전도사">전도사</option>
+                <option value="기타">기타 (수기 입력)</option>
+            </select>
+            <input type="text" id="customPositionInput" placeholder="직분 수기 입력 (예: 간사)" disabled style="display: none; padding: 10px; font-size: 16px; border-radius: 5px; border: 1px solid #007bff; width: 160px; background-color: #f0f7ff;">
+            <input type="text" id="memberDepartment" placeholder="소속 부서 (예: 청년부)" disabled style="padding: 10px; font-size: 16px; border-radius: 5px; border: 1px solid #ccc; width: 170px;">
+            <input type="text" id="memberPhone" placeholder="연락처 (예: 010-1234-5678)" disabled style="padding: 10px; font-size: 16px; border-radius: 5px; border: 1px solid #ccc; width: 180px;">
+        </div>
+        <button id="registerBtn" disabled style="margin-top: 8px; padding: 12px 30px; font-size: 18px; font-weight: bold; background-color: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer;">👤 교인 얼굴 등록하기</button>
+    </div>
+
+    <div style="margin-top: 25px; display: flex; justify-content: center; gap: 20px;">
+        <a href="/attendance" class="link">&larr; 무인 출석 페이지</a>
+        <a href="/members" class="link">👥 등록 교인 목록 & 수정 관리 &rarr;</a>
+    </div>
+
+    <script>
+        const video = document.getElementById('video');
+        const statusEl = document.getElementById('status');
+        const nameInput = document.getElementById('memberName');
+        const positionInput = document.getElementById('memberPosition');
+        const customPositionInput = document.getElementById('customPositionInput');
+        const departmentInput = document.getElementById('memberDepartment');
+        const phoneInput = document.getElementById('memberPhone');
+        const registerBtn = document.getElementById('registerBtn');
+
+        function handlePositionSelectChange() {
+            if (positionInput.value === '기타') {
+                customPositionInput.style.display = 'inline-block';
+                customPositionInput.disabled = false;
+                customPositionInput.focus();
+            } else {
+                customPositionInput.style.display = 'none';
+                customPositionInput.value = '';
+            }
+        }
+
+        function getFinalPosition() {
+            if (positionInput.value === '기타') {
+                return customPositionInput.value.trim() || '기타';
+            }
+            return positionInput.value;
+        }
+        const modelsUrl = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/weights';
+
+        let isFlipped = localStorage.getItem('cameraFlipped') === 'true';
+        let faceMatcher = null;
+        let registeredMembersMap = {};
+
+        async function loadExistingMembers() {
+            try {
+                const res = await fetch('/api/members');
+                const members = await res.json();
+                if (members && members.length > 0) {
+                    const labeledDescriptors = members.map(m => {
+                        registeredMembersMap[m.id.toString()] = m.name;
+                        const arr = JSON.parse(m.faceDescriptor);
+                        return new faceapi.LabeledFaceDescriptors(m.id.toString(), [new Float32Array(arr)]);
+                    });
+                    faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.45);
+                }
+            } catch (e) {
+                console.error("교인 목록 로딩 실패:", e);
+            }
+        }
+
+        function applyFlip() {
+            const transformVal = isFlipped ? 'scaleX(-1)' : 'none';
+            video.style.transform = transformVal;
+            const canvas = document.querySelector('#video-container canvas');
+            if (canvas) {
+                canvas.style.transform = 'none';
+            }
+        }
+
+        function toggleFlip() {
+            isFlipped = !isFlipped;
+            localStorage.setItem('cameraFlipped', isFlipped);
+            applyFlip();
+        }
+
+        Promise.all([
+            faceapi.nets.ssdMobilenetv1.loadFromUri(modelsUrl),
+            faceapi.nets.faceLandmark68Net.loadFromUri(modelsUrl),
+            faceapi.nets.faceRecognitionNet.loadFromUri(modelsUrl)
+        ]).then(() => {
+            loadExistingMembers();
+            startVideo();
+        }).catch(err => {
+            statusEl.innerText = "모델 로딩 실패: " + err;
+        });
+
+        function startVideo() {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                statusEl.style.color = '#e74c3c';
+                statusEl.innerHTML = "⚠️ <b>카메라 접근 제한</b><br>HTTP IP 접속(예: 192.168.x.x) 시 브라우저 보안 정책으로 카메라가 차단됩니다.<br><a href='http://localhost:8081/register' style='color:#007bff; text-decoration:underline;'>http://localhost:8081</a> 로 접속하거나 HTTPS를 설정해 주세요.";
+                return;
+            }
+
+            navigator.mediaDevices.getUserMedia({ video: {} })
+                .then(stream => {
+                    video.srcObject = stream;
+                    applyFlip();
+                    statusEl.style.color = '#333';
+                    statusEl.innerText = "카메라에 얼굴을 맞춰주세요.";
+                    nameInput.disabled = false;
+                    positionInput.disabled = false;
+                    departmentInput.disabled = false;
+                    phoneInput.disabled = false;
+                })
+                .catch(err => {
+                    console.error("카메라 접근 오류:", err);
+                    statusEl.style.color = '#e74c3c';
+                    if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+                        statusEl.innerHTML = "🚫 <b>카메라 권한이 거부되었습니다</b><br>주소창 왼쪽 🔒(자물쇠) 또는 설정 아이콘 ➔ <b>카메라 권한을 '허용'</b>으로 변경 후 새로고침(F5) 해주세요.";
+                    } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+                        statusEl.innerHTML = "🔌 <b>카메라(웹캠)를 찾을 수 없습니다</b><br>PC에 웹캠이 정상 연결되어 있는지 확인해 주세요.";
+                    } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+                        statusEl.innerHTML = "📷 <b>카메라가 이미 사용 중입니다</b><br>Zoom, Teams, 줌/화상회의 등 다른 앱에서 카메라를 끄고 새로고침 해주세요.";
+                    } else {
+                        statusEl.innerHTML = "⚠️ 카메라 접근 실패: " + err.name + " (" + err.message + ")";
+                    }
+                });
+        }
+
+        video.addEventListener('play', () => {
+            const canvas = faceapi.createCanvasFromMedia(video);
+            document.getElementById('video-container').append(canvas);
+            applyFlip();
+            const displaySize = { width: video.width, height: video.height };
+            faceapi.matchDimensions(canvas, displaySize);
+
+            setInterval(async () => {
+                const detections = await faceapi.detectAllFaces(video).withFaceLandmarks().withFaceDescriptors();
+                const resizedDetections = faceapi.resizeResults(detections, displaySize);
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                resizedDetections.forEach(detection => {
+                    const b = detection.detection ? detection.detection.box : detection.box;
+                    const score = detection.detection ? detection.detection.score : detection.score;
+                    
+                    const x = isFlipped ? (displaySize.width - b.x - b.width) : b.x;
+                    const y = b.y;
+                    const width = b.width;
+                    const height = b.height;
+
+                    ctx.strokeStyle = '#007bff';
+                    ctx.lineWidth = 3;
+                    ctx.strokeRect(x, y, width, height);
+
+                    if (score !== undefined) {
+                        const scoreText = (Math.round(score * 100) / 100).toFixed(2);
+                        ctx.font = 'bold 14px sans-serif';
+                        const textWidth = ctx.measureText(scoreText).width;
+                        const textY = y > 22 ? y - 22 : y;
+                        
+                        ctx.fillStyle = '#007bff';
+                        ctx.fillRect(x, textY, textWidth + 10, 20);
+                        
+                        ctx.fillStyle = '#ffffff';
+                        ctx.fillText(scoreText, x + 5, textY + 14);
+                    }
+                });
+
+                if (detections.length === 1) {
+                    window.currentDescriptor = detections[0].descriptor;
+                    window.currentDetection = detections[0];
+                    
+                    // 기존 등록 여부 실시간 확인 (얼굴 매칭)
+                    let matchedName = null;
+                    if (faceMatcher) {
+                        const bestMatch = faceMatcher.findBestMatch(detections[0].descriptor);
+                        if (bestMatch.label !== 'unknown') {
+                            matchedName = registeredMembersMap[bestMatch.label];
+                        }
+                    }
+
+                    if (matchedName) {
+                        statusEl.style.color = '#e74c3c';
+                        statusEl.innerText = "⚠️ 이미 등록된 얼굴입니다. (등록명: " + matchedName + ")";
+                        registerBtn.disabled = true;
+                    } else if (nameInput.value.trim() !== '') {
+                        statusEl.style.color = '#27ae60';
+                        statusEl.innerText = "얼굴 인식 완료. 아래 '얼굴 등록하기' 버튼을 누르세요.";
+                        registerBtn.disabled = false;
+                    } else {
+                        statusEl.style.color = '#333';
+                        statusEl.innerText = "얼굴 인식 완료. 이름을 입력해 주세요.";
+                        registerBtn.disabled = true;
+                    }
+                } else if (detections.length > 1) {
+                    registerBtn.disabled = true;
+                    statusEl.style.color = '#e74c3c';
+                    statusEl.innerText = "화면에 한 분만 나와주세요.";
+                } else {
+                    registerBtn.disabled = true;
+                    statusEl.style.color = '#333';
+                    statusEl.innerText = "얼굴을 찾을 수 없습니다.";
+                }
+            }, 1000);
+        });
+
+        function captureThumbnail(detection) {
+            try {
+                const b = detection.detection ? detection.detection.box : detection.box;
+                const tempCanvas = document.createElement('canvas');
+                const pad = 30;
+                const x = Math.max(0, b.x - pad);
+                const y = Math.max(0, b.y - pad);
+                const w = Math.min(video.videoWidth - x, b.width + pad * 2);
+                const h = Math.min(video.videoHeight - y, b.height + pad * 2);
+
+                tempCanvas.width = 200;
+                tempCanvas.height = 200;
+                const ctx = tempCanvas.getContext('2d');
+                ctx.drawImage(video, x, y, w, h, 0, 0, 200, 200);
+                return tempCanvas.toDataURL('image/jpeg', 0.85);
+            } catch (e) {
+                console.error("섬네일 캡처 오류:", e);
+                return null;
+            }
+        }
+
+        nameInput.addEventListener('input', () => {
+            if (window.currentDescriptor && nameInput.value.trim() !== '') {
+                registerBtn.disabled = false;
+            } else {
+                registerBtn.disabled = true;
+            }
+        });
+
+        registerBtn.addEventListener('click', async () => {
+            if (!window.currentDescriptor) return;
+            const name = nameInput.value.trim();
+            if (!name) return;
+
+            registerBtn.disabled = true;
+            statusEl.innerText = "등록 중...";
+
+            const thumbnailData = window.currentDetection ? captureThumbnail(window.currentDetection) : null;
+
+            try {
+                const response = await fetch('/api/member/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: name,
+                        position: getFinalPosition(),
+                        department: departmentInput.value.trim(),
+                        phone: phoneInput.value.trim(),
+                        profileImage: thumbnailData,
+                        descriptor: JSON.stringify(Array.from(window.currentDescriptor))
+                    })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    alert(result.message);
+                    nameInput.value = '';
+                    customPositionInput.value = '';
+                    customPositionInput.style.display = 'none';
+                    positionInput.value = '교우';
+                    departmentInput.value = '';
+                    phoneInput.value = '';
+                    await loadExistingMembers(); // 등록 후 목록 갱신
+                } else {
+                    alert('⚠️ ' + result.message);
+                    statusEl.style.color = '#e74c3c';
+                    statusEl.innerText = "⚠️ " + result.message;
+                }
+            } catch (err) {
+                alert('서버 오류: ' + err);
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>등록 교인 관리 & 수정 - Church Member Attendance</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --primary-light: #34495e;
+            --accent: #27ae60;
+            --warning: #f39c12;
+            --danger: #e74c3c;
+            --bg-color: #f4f7f6;
+            --card-bg: #ffffff;
+            --text-dark: #2c3e50;
+            --text-muted: #7f8c8d;
+            --border: #e2e8f0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 20px;
+            color: var(--text-dark);
+        }
+
+        .container {
+            max-width: 1240px;
+            margin: 0 auto;
+        }
+
+        .header-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: var(--primary);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 14px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+        }
+
+        .header-bar h1 {
+            margin: 0;
+            font-size: 1.8em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 12px;
+        }
+
+        .nav-btn {
+            color: #ecf0f1;
+            background-color: var(--primary-light);
+            padding: 9px 18px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: bold;
+            border: 1px solid #7f8c8d;
+            transition: all 0.2s;
+        }
+
+        .nav-btn:hover {
+            background-color: #4e6d8c;
+            color: white;
+        }
+
+        .stats-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            display: flex;
+            flex-direction: column;
+            border: 1px solid var(--border);
+        }
+
+        .card-title {
+            font-size: 0.9em;
+            color: var(--text-muted);
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .card-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        .toolbar {
+            background: var(--card-bg);
+            padding: 15px 20px;
+            border-radius: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            border: 1px solid var(--border);
+            flex-wrap: wrap;
+        }
+
+        .search-box {
+            display: flex;
+            gap: 10px;
+            flex: 1;
+            min-width: 280px;
+        }
+
+        .search-input {
+            flex: 1;
+            padding: 10px 15px;
+            font-size: 15px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            outline: none;
+        }
+
+        .search-input:focus {
+            border-color: var(--primary);
+        }
+
+        .filter-select {
+            padding: 10px 15px;
+            font-size: 15px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: white;
+            outline: none;
+        }
+
+        .table-container {
+            background: var(--card-bg);
+            border-radius: 14px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th, td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            vertical-align: middle;
+        }
+
+        th {
+            background-color: #f8fafc;
+            color: var(--primary);
+            font-weight: bold;
+            font-size: 0.95em;
+        }
+
+        tr:hover {
+            background-color: #f1f5f9;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: bold;
+        }
+
+        .badge-position { background-color: #e0f2fe; color: #0369a1; }
+        .badge-face-ok { background-color: #dcfce7; color: #15803d; }
+
+        .btn-action {
+            padding: 7px 14px;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 0.85em;
+            cursor: pointer;
+            transition: opacity 0.2s;
+            margin-right: 4px;
+        }
+
+        .btn-edit { background-color: #3b82f6; color: white; }
+        .btn-edit:hover { opacity: 0.9; }
+
+        .btn-delete { background-color: var(--danger); color: white; }
+        .btn-delete:hover { opacity: 0.9; }
+
+        /* Modal Overlay */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.65);
+            backdrop-filter: blur(4px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal {
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 460px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            animation: modalFade 0.2s ease;
+        }
+
+        @keyframes modalFade {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .modal h2 {
+            margin-top: 0;
+            color: var(--primary);
+            font-size: 1.4em;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+            text-align: left;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: bold;
+            font-size: 0.9em;
+            color: var(--text-dark);
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 15px;
+            box-sizing: border-box;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 25px;
+        }
+
+        .btn-cancel {
+            background: #94a3b8;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .btn-save {
+            background: var(--accent);
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .empty-msg {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-muted);
+            font-size: 1.1em;
+        }
+
+        .member-thumb {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #007bff;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+            transition: transform 0.2s;
+        }
+
+        .member-thumb:hover {
+            transform: scale(1.15);
+        }
+
+        .member-thumb-empty {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: #e2e8f0;
+            color: #64748b;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .member-thumb-empty:hover {
+            transform: scale(1.15);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header-bar">
+            <h1>👥 교인 명단 & 정보 관리</h1>
+            <div class="nav-links">
+                <a href="/attendance" class="nav-btn">📹 무인 출석</a>
+                <a href="/register" class="nav-btn">👤 얼굴 등록</a>
+                <a href="/stats" class="nav-btn">📊 출석 통계</a>
+            </div>
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="stats-cards">
+            <div class="card">
+                <span class="card-title">전체 등록 교인 수</span>
+                <span class="card-value" id="totalMembersCount">0명</span>
+            </div>
+            <div class="card">
+                <span class="card-title">직분별 등록 현황</span>
+                <span class="card-value" id="positionSummary" style="font-size: 1.1em; margin-top: 10px; line-height: 1.4;">-</span>
+            </div>
+        </div>
+
+        <!-- Toolbar -->
+        <div class="toolbar">
+            <div class="search-box">
+                <input type="text" id="searchInput" class="search-input" placeholder="교인 성명, 직분, 부서 검색...">
+                <select id="positionFilter" class="filter-select">
+                    <option value="">전체 직분 보기</option>
+                    <option value="교우">교우</option>
+                    <option value="집사">집사</option>
+                    <option value="권사">권사</option>
+                    <option value="장로">장로</option>
+                    <option value="목사">목사</option>
+                    <option value="전도사">전도사</option>
+                    <option value="기타">기타 (수기입력)</option>
+                </select>
+            </div>
+            <a href="/register" style="padding: 10px 20px; background-color: var(--accent); color: white; border-radius: 8px; text-decoration: none; font-weight: bold;">+ 신규 교인 등록</a>
+        </div>
+
+        <!-- Member Table -->
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th style="width: 70px; text-align: center;">사진</th>
+                        <th>교인 성명</th>
+                        <th>직분</th>
+                        <th>소속 부서</th>
+                        <th>연락처</th>
+                        <th>얼굴 등록</th>
+                        <th>등록 일자</th>
+                        <th>관리</th>
+                    </tr>
+                </thead>
+                <tbody id="memberTableBody">
+                    <tr>
+                        <td colspan="9" class="empty-msg">교인 데이터를 불러오는 중입니다...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Edit Member Modal -->
+    <div id="editModal" class="modal-overlay" style="display: none;">
+        <div class="modal">
+            <h2>✏️ 교인 정보 수정</h2>
+            <form id="editForm">
+                <input type="hidden" id="editMemberId">
+                <div style="text-align: center; margin-bottom: 18px;">
+                    <img id="editPhotoPreview" src="" style="width: 84px; height: 84px; border-radius: 50%; object-fit: cover; border: 3px solid #007bff; box-shadow: 0 3px 10px rgba(0,0,0,0.15); display: none; margin: 0 auto;">
+                    <div id="editPhotoEmpty" style="width: 84px; height: 84px; border-radius: 50%; background: #e2e8f0; color: #64748b; font-size: 2.2em; display: flex; align-items: center; justify-content: center; margin: 0 auto;">👤</div>
+                    <button type="button" onclick="document.getElementById('editPhotoFileInput').click()" style="margin-top: 8px; font-size: 0.85em; padding: 5px 12px; background: #0284c7; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">📷 사진 교체 / 업로드</button>
+                    <input type="file" id="editPhotoFileInput" accept="image/*" style="display: none;" onchange="handleEditPhotoSelect(event)">
+                </div>
+
+                <div class="form-group">
+                    <label for="editName">교인 성명 *</label>
+                    <input type="text" id="editName" required>
+                </div>
+                <div class="form-group">
+                    <label for="editPosition">직분 *</label>
+                    <select id="editPosition" onchange="handleEditPositionChange()">
+                        <option value="교우">교우</option>
+                        <option value="집사">집사</option>
+                        <option value="권사">권사</option>
+                        <option value="장로">장로</option>
+                        <option value="목사">목사</option>
+                        <option value="전도사">전도사</option>
+                        <option value="기타">기타 (수기 입력)</option>
+                    </select>
+                    <input type="text" id="editCustomPositionInput" placeholder="직분 수기 입력 (예: 강사, 간사)" style="display: none; margin-top: 8px;">
+                </div>
+                <div class="form-group">
+                    <label for="editDepartment">소속 부서</label>
+                    <input type="text" id="editDepartment" placeholder="예: 청년부, 1교구">
+                </div>
+                <div class="form-group">
+                    <label for="editPhone">연락처</label>
+                    <input type="text" id="editPhone" placeholder="예: 010-1234-5678">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-cancel" onclick="closeEditModal()">취소</button>
+                    <button type="submit" class="btn-save">수정 저장</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Photo Viewer & Changer Modal -->
+    <div id="photoModal" class="modal-overlay" style="display: none;">
+        <div class="modal" style="max-width: 420px; text-align: center;">
+            <h2 id="photoModalTitle" style="margin-bottom: 12px; font-size: 1.3em;">🖼️ 교인 프로필 사진</h2>
+            <div style="margin: 15px 0;">
+                <img id="photoModalPreview" src="" alt="교인 사진" style="max-width: 280px; max-height: 280px; border-radius: 12px; border: 3px solid #007bff; object-fit: cover; box-shadow: 0 6px 20px rgba(0,0,0,0.18); display: none; margin: 0 auto;">
+                <div id="photoModalEmpty" style="width: 200px; height: 200px; border-radius: 12px; background: #f1f5f9; display: flex; align-items: center; justify-content: center; margin: 0 auto; color: #94a3b8; font-size: 4.5em;">👤</div>
+            </div>
+            
+            <div style="margin-top: 15px; display: flex; justify-content: center; gap: 10px;">
+                <input type="file" id="photoFileInput" accept="image/*" style="display: none;" onchange="handlePhotoFileSelect(event)">
+                <button type="button" class="btn-action" style="background: #0284c7; color: white; padding: 9px 18px; font-size: 0.9em;" onclick="document.getElementById('photoFileInput').click()">📷 컴퓨터 사진 변경 / 업로드</button>
+            </div>
+
+            <div class="modal-actions" style="justify-content: center; margin-top: 20px;">
+                <button type="button" class="btn-cancel" onclick="closePhotoModal()">닫기</button>
+                <button type="button" id="savePhotoBtn" class="btn-save" style="display: none;" onclick="saveNewPhoto()">💾 새 사진 저장</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allMembers = [];
+        let currentEditingMemberId = null;
+        let tempEditProfileImage = null;
+        let currentPhotoMemberId = null;
+        let tempNewPhoto = null;
+
+        async function loadMembers() {
+            try {
+                const res = await fetch('/api/members');
+                allMembers = await res.json();
+                renderMembers();
+                updateStats();
+            } catch (e) {
+                console.error("교인 목록 로딩 오류:", e);
+                document.getElementById('memberTableBody').innerHTML = `
+                    <tr><td colspan="9" class="empty-msg" style="color: var(--danger);">교인 목록을 불러오지 못했습니다.</td></tr>
+                `;
+            }
+        }
+
+        function updateStats() {
+            document.getElementById('totalMembersCount').innerText = allMembers.length + "명";
+            
+            const posCount = {};
+            allMembers.forEach(m => {
+                const pos = m.position || '교우';
+                posCount[pos] = (posCount[pos] || 0) + 1;
+            });
+
+            const summaryStr = Object.entries(posCount)
+                .map(([pos, cnt]) => `${pos} ${cnt}명`)
+                .join(' · ');
+            document.getElementById('positionSummary').innerText = summaryStr || '없음';
+        }
+
+        function renderMembers() {
+            const search = document.getElementById('searchInput').value.trim().toLowerCase();
+            const posFilter = document.getElementById('positionFilter').value;
+            const tbody = document.getElementById('memberTableBody');
+
+            const filtered = allMembers.filter(m => {
+                const matchSearch = !search || 
+                    m.name.toLowerCase().includes(search) ||
+                    (m.position && m.position.toLowerCase().includes(search)) ||
+                    (m.department && m.department.toLowerCase().includes(search)) ||
+                    (m.phone && m.phone.includes(search));
+                
+                const matchPos = !posFilter || (m.position || '교우') === posFilter;
+                return matchSearch && matchPos;
+            });
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="9" class="empty-msg">등록된 교인 데이터가 없습니다.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = filtered.map(m => {
+                const createdDate = m.createdAt ? m.createdAt.substring(0, 10) : '-';
+                const photoHtml = m.profileImage 
+                    ? `<img src="${m.profileImage}" class="member-thumb" onclick="openPhotoModal(${m.id})" title="클릭하여 원본 사진 보기 및 변경">`
+                    : `<div class="member-thumb-empty" onclick="openPhotoModal(${m.id})" title="클릭하여 사진 등록">👤</div>`;
+
+                return `
+                    <tr>
+                        <td><b>${m.id}</b></td>
+                        <td style="text-align: center;">${photoHtml}</td>
+                        <td><b>${m.name}</b></td>
+                        <td><span class="badge badge-position">${m.position || '교우'}</span></td>
+                        <td>${m.department || '-'}</td>
+                        <td>${m.phone || '-'}</td>
+                        <td><span class="badge badge-face-ok">등록됨</span></td>
+                        <td>${createdDate}</td>
+                        <td>
+                            <button class="btn-action btn-edit" onclick="openEditModal(${m.id})">✏️ 수정</button>
+                            <button class="btn-action btn-delete" onclick="deleteMember(${m.id}, '${m.name}')">🗑️ 삭제</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        document.getElementById('searchInput').addEventListener('input', renderMembers);
+        document.getElementById('positionFilter').addEventListener('change', renderMembers);
+
+        // Photo Modal Viewer
+        function openPhotoModal(id) {
+            const m = allMembers.find(item => item.id === id);
+            if (!m) return;
+            currentPhotoMemberId = m.id;
+            tempNewPhoto = null;
+            document.getElementById('photoModalTitle').innerText = `🖼️ ${m.name} ${m.position || '교우'} 프로필 사진`;
+            
+            const preview = document.getElementById('photoModalPreview');
+            const empty = document.getElementById('photoModalEmpty');
+            const saveBtn = document.getElementById('savePhotoBtn');
+            saveBtn.style.display = 'none';
+
+            if (m.profileImage) {
+                preview.src = m.profileImage;
+                preview.style.display = 'block';
+                empty.style.display = 'none';
+            } else {
+                preview.style.display = 'none';
+                empty.style.display = 'flex';
+            }
+
+            document.getElementById('photoModal').style.display = 'flex';
+        }
+
+        function closePhotoModal() {
+            document.getElementById('photoModal').style.display = 'none';
+        }
+
+        function handlePhotoFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 300;
+                    canvas.height = 300;
+                    const ctx = canvas.getContext('2d');
+                    
+                    const minDim = Math.min(img.width, img.height);
+                    const sx = (img.width - minDim) / 2;
+                    const sy = (img.height - minDim) / 2;
+                    ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, 300, 300);
+                    
+                    const base64Data = canvas.toDataURL('image/jpeg', 0.85);
+                    const preview = document.getElementById('photoModalPreview');
+                    preview.src = base64Data;
+                    preview.style.display = 'block';
+                    document.getElementById('photoModalEmpty').style.display = 'none';
+                    document.getElementById('savePhotoBtn').style.display = 'inline-block';
+                    tempNewPhoto = base64Data;
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        async function saveNewPhoto() {
+            if (!currentPhotoMemberId || !tempNewPhoto) return;
+            try {
+                const res = await fetch(`/api/member/${currentPhotoMemberId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ profileImage: tempNewPhoto })
+                });
+                const result = await res.json();
+                if (result.success) {
+                    alert("프로필 사진이 성공적으로 변경되었습니다.");
+                    closePhotoModal();
+                    await loadMembers();
+                } else {
+                    alert("사진 저장 실패: " + result.message);
+                }
+            } catch(e) {
+                alert("서버 연동 오류: " + e);
+            }
+        }
+
+        // Edit Modal
+        function handleEditPositionChange() {
+            const editPos = document.getElementById('editPosition');
+            const customInput = document.getElementById('editCustomPositionInput');
+            if (editPos.value === '기타') {
+                customInput.style.display = 'block';
+                customInput.focus();
+            } else {
+                customInput.style.display = 'none';
+                customInput.value = '';
+            }
+        }
+
+        function getEditFinalPosition() {
+            const editPos = document.getElementById('editPosition');
+            const customInput = document.getElementById('editCustomPositionInput');
+            if (editPos.value === '기타') {
+                return customInput.value.trim() || '기타';
+            }
+            return editPos.value;
+        }
+
+        function openEditModal(id) {
+            const m = allMembers.find(item => item.id === id);
+            if (!m) return;
+            currentEditingMemberId = m.id;
+            tempEditProfileImage = m.profileImage || null;
+
+            document.getElementById('editMemberId').value = m.id;
+            document.getElementById('editName').value = m.name;
+
+            const editPreview = document.getElementById('editPhotoPreview');
+            const editEmpty = document.getElementById('editPhotoEmpty');
+            if (m.profileImage) {
+                editPreview.src = m.profileImage;
+                editPreview.style.display = 'block';
+                editEmpty.style.display = 'none';
+            } else {
+                editPreview.style.display = 'none';
+                editEmpty.style.display = 'flex';
+            }
+
+            const standardPositions = ['교우', '집사', '권사', '장로', '목사', '전도사'];
+            const pos = m.position || '교우';
+            const editPosSelect = document.getElementById('editPosition');
+            const editCustomInput = document.getElementById('editCustomPositionInput');
+
+            if (standardPositions.includes(pos)) {
+                editPosSelect.value = pos;
+                editCustomInput.style.display = 'none';
+                editCustomInput.value = '';
+            } else {
+                editPosSelect.value = '기타';
+                editCustomInput.style.display = 'block';
+                editCustomInput.value = pos;
+            }
+
+            document.getElementById('editDepartment').value = m.department || '';
+            document.getElementById('editPhone').value = m.phone || '';
+            document.getElementById('editModal').style.display = 'flex';
+        }
+
+        function handleEditPhotoSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 300;
+                    canvas.height = 300;
+                    const ctx = canvas.getContext('2d');
+                    
+                    const minDim = Math.min(img.width, img.height);
+                    const sx = (img.width - minDim) / 2;
+                    const sy = (img.height - minDim) / 2;
+                    ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, 300, 300);
+                    
+                    const base64Data = canvas.toDataURL('image/jpeg', 0.85);
+                    const editPreview = document.getElementById('editPhotoPreview');
+                    editPreview.src = base64Data;
+                    editPreview.style.display = 'block';
+                    document.getElementById('editPhotoEmpty').style.display = 'none';
+                    tempEditProfileImage = base64Data;
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').style.display = 'none';
+        }
+
+        document.getElementById('editForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('editMemberId').value;
+            const name = document.getElementById('editName').value.trim();
+            const position = getEditFinalPosition();
+            const department = document.getElementById('editDepartment').value.trim();
+            const phone = document.getElementById('editPhone').value.trim();
+
+            try {
+                const res = await fetch(`/api/member/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name,
+                        position,
+                        department,
+                        phone,
+                        profileImage: tempEditProfileImage
+                    })
+                });
+                const result = await res.json();
+                if (result.success) {
+                    alert(result.message);
+                    closeEditModal();
+                    await loadMembers();
+                } else {
+                    alert('수정 실패: ' + result.message);
+                }
+            } catch (err) {
+                alert('서버 연동 오류: ' + err);
+            }
+        });
+
+        async function deleteMember(id, name) {
+            if (!confirm(`정말로 '${name}' 교우님의 정보 및 출석 이력을 삭제하시겠습니까?`)) {
+                return;
+            }
+
+            try {
+                const res = await fetch(`/api/member/${id}`, { method: 'DELETE' });
+                const result = await res.json();
+                if (result.success) {
+                    alert(result.message);
+                    await loadMembers();
+                } else {
+                    alert('삭제 실패: ' + result.message);
+                }
+            } catch (err) {
+                alert('서버 연동 오류: ' + err);
+            }
+        }
+
+        window.onload = loadMembers;
+    </script>
+</body>
+</html>

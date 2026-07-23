@@ -1,0 +1,28 @@
+HELP.md
+.gradle
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### Local configuration file ###
+application-local.properties
+
+### Log files ###
+*.log
+
+### OS Files ###
+.DS_Store
+Thumbs.db
+
+### IDE ###
+.idea
+*.iws
+*.iml
+*.ipr
+.vscode/
+bin/
+out/
+.classpath
+.project
+.settings/

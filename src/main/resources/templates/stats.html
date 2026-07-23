@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>교인 출석 통계 & 캘린더 대시보드</title>
+    <!-- FullCalendar CSS & JS -->
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-color: #f4f7f6;
+            --card-bg: #ffffff;
+            --primary-color: #2c3e50;
+            --accent-color: #27ae60;
+            --text-color: #333333;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 20px;
+            color: var(--text-color);
+        }
+
+        .header-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: var(--primary-color);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .header-bar h1 {
+            margin: 0;
+            font-size: 1.8em;
+        }
+
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            background-color: #34495e;
+            padding: 8px 16px;
+            border-radius: 6px;
+            margin-left: 10px;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+
+        .nav-links a:hover {
+            background-color: var(--accent-color);
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 450px 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 1024px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+
+        .card h2 {
+            margin-top: 0;
+            color: var(--primary-color);
+            font-size: 1.3em;
+            border-bottom: 2px solid #ecf0f1;
+            padding-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        #calendar {
+            max-width: 100%;
+        }
+
+        .fc .fc-button-primary {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+
+        .fc .fc-button-primary:hover {
+            background-color: var(--accent-color);
+            border-color: var(--accent-color);
+        }
+
+        .fc-event {
+            cursor: pointer;
+            background-color: #27ae60 !important;
+            border-color: #27ae60 !important;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+
+        table.stats-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        table.stats-table th, table.stats-table td {
+            border: 1px solid #e2e8f0;
+            padding: 10px 12px;
+            text-align: center;
+        }
+
+        table.stats-table th {
+            background-color: #edf2f7;
+            color: #2d3748;
+            font-weight: bold;
+        }
+
+        table.stats-table tr:nth-child(even) {
+            background-color: #f7fafc;
+        }
+
+        .badge-time {
+            background-color: #e8f8f5;
+            color: #16a085;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+
+        .selected-date-title {
+            color: var(--accent-color);
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header-bar">
+        <h1>📊 교인 출석 통계 & 캘린더 대시보드 (포트: 8081)</h1>
+        <div class="nav-links">
+            <a href="/attendance">📷 출석 체크 화면</a>
+            <a href="/members">👥 교인 명단 & 수정</a>
+            <a href="/register">👤 교인 얼굴 등록</a>
+        </div>
+    </div>
+
+    <div class="dashboard-grid">
+        <!-- 좌측: 출석 캘린더 -->
+        <div>
+            <div class="card">
+                <h2>🗓️ 월별 출석 캘린더</h2>
+                <div id="calendar"></div>
+            </div>
+        </div>
+
+        <!-- 우측: 시간대별 출석 분포 그래프 & 상세 테이블 -->
+        <div>
+            <!-- 시간대별 분포 차트 -->
+            <div class="card">
+                <h2>
+                    <span>📈 <span id="targetDateText" class="selected-date-title">오늘</span> 출석시간 분포 그래프</span>
+                    <span style="font-size: 0.8em; color: #7f8c8d;">총 출석 인원: <span id="totalCountBadge" style="color:#27ae60; font-weight:bold;">0</span>명</span>
+                </h2>
+                <div class="chart-container">
+                    <canvas id="hourlyChart"></canvas>
+                </div>
+            </div>
+
+            <!-- 해당일 출석 교인 명단 -->
+            <div class="card">
+                <h2>📋 <span id="targetDateText2" class="selected-date-title">오늘</span> 출석 교인 상세 명단 및 출석 시간</h2>
+                <div style="max-height: 300px; overflow-y: auto;">
+                    <table class="stats-table">
+                        <thead>
+                            <tr>
+                                <th>No</th>
+                                <th>성명</th>
+                                <th>소속 부서</th>
+                                <th>직분</th>
+                                <th>출석 시간</th>
+                            </tr>
+                        </thead>
+                        <tbody id="memberListBody">
+                            <tr>
+                                <td colspan="5" style="color: #a0aec0; padding: 20px;">출석 데이터 조회 중...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let calendar = null;
+        let hourlyChart = null;
+        let selectedDate = new Date().toISOString().split('T')[0];
+
+        document.addEventListener('DOMContentLoaded', function() {
+            initCalendar();
+            initChart();
+            loadDailyStats(selectedDate);
+        });
+
+        function initCalendar() {
+            const calendarEl = document.getElementById('calendar');
+            calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                locale: 'ko',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: ''
+                },
+                events: function(info, successCallback, failureCallback) {
+                    fetch(`/api/attendance/calendar-events?start=${info.startStr}&end=${info.endStr}`)
+                        .then(res => res.json())
+                        .then(data => successCallback(data))
+                        .catch(err => failureCallback(err));
+                },
+                dateClick: function(info) {
+                    selectedDate = info.dateStr;
+                    loadDailyStats(selectedDate);
+                },
+                eventClick: function(info) {
+                    selectedDate = info.event.startStr.split('T')[0];
+                    loadDailyStats(selectedDate);
+                }
+            });
+            calendar.render();
+        }
+
+        function initChart() {
+            const ctx = document.getElementById('hourlyChart').getContext('2d');
+            hourlyChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: '출석 교인 수 (명)',
+                        data: [],
+                        backgroundColor: 'rgba(39, 174, 96, 0.7)',
+                        borderColor: 'rgba(39, 174, 96, 1)',
+                        borderWidth: 2,
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                precision: 0
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        }
+
+        function loadDailyStats(dateStr) {
+            document.getElementById('targetDateText').innerText = dateStr;
+            document.getElementById('targetDateText2').innerText = dateStr;
+
+            fetch(`/api/attendance/daily-stats?date=${dateStr}`)
+                .then(res => res.json())
+                .then(data => {
+                    document.getElementById('totalCountBadge').innerText = data.totalCount;
+
+                    hourlyChart.data.labels = data.hourlyLabels;
+                    hourlyChart.data.datasets[0].data = data.hourlyData;
+                    hourlyChart.update();
+
+                    const tbody = document.getElementById('memberListBody');
+                    tbody.innerHTML = '';
+
+                    if (data.members.length === 0) {
+                        tbody.innerHTML = `<tr><td colspan="5" style="color: #a0aec0; padding: 20px;">해당 날짜에 출석한 교인이 없습니다.</td></tr>`;
+                    } else {
+                        data.members.forEach((m, idx) => {
+                            const tr = document.createElement('tr');
+                            tr.innerHTML = `
+                                <td>${idx + 1}</td>
+                                <td><strong>${m.name}</strong></td>
+                                <td>${m.department}</td>
+                                <td>${m.position}</td>
+                                <td><span class="badge-time">⏱️ ${m.checkInTime}</span></td>
+                            `;
+                            tbody.appendChild(tr);
+                        });
+                    }
+                })
+                .catch(err => {
+                    console.error("통계 데이터 로드 실패:", err);
+                });
+        }
+    </script>
+</body>
+</html>
