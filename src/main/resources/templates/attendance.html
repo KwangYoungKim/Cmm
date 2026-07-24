@@ -553,8 +553,18 @@
                 allMembersData = members;
                 populateQuickMemberSelect(members);
 
-                const labeledDescriptors = members.map(member => {
-                    memberNamesMap[member.id.toString()] = member.name;
+                // 동명이인 구분(부서/직분)을 포함한 교인 이름 맵 생성
+                const nameCounts = {};
+                members.forEach(m => { if (m.name) nameCounts[m.name] = (nameCounts[m.name] || 0) + 1; });
+
+                const validMembers = members.filter(m => m.faceDescriptor && m.faceDescriptor.trim().length > 0);
+                const labeledDescriptors = validMembers.map(member => {
+                    if (nameCounts[member.name] > 1) {
+                        const info = member.department || member.position || ('ID:' + member.id);
+                        memberNamesMap[member.id.toString()] = `${member.name} (${info})`;
+                    } else {
+                        memberNamesMap[member.id.toString()] = member.name;
+                    }
                     const parsed = JSON.parse(member.faceDescriptor);
                     let float32Arrays = [];
 
