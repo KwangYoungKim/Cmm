@@ -304,8 +304,10 @@ public class AttendanceController {
             List<double[]> existingList = parseDescriptorJson(member.getFaceDescriptor());
             if (existingList.isEmpty()) return;
 
-            // 저장 벡터 최대 8개 제한 (DB 용량 및 연산 효율 유지)
-            if (existingList.size() >= 8) return;
+            // 저장 벡터 최대 10개 제한 (10개 초과 시 초기 3개 등록 포즈 유지 + 4번째 이후 슬라이딩 윈도우 교체)
+            if (existingList.size() >= 10) {
+                existingList.remove(3);
+            }
 
             double[] newArr = newVector.stream().mapToDouble(Double::doubleValue).toArray();
 
@@ -339,6 +341,76 @@ public class AttendanceController {
             }
         } catch (Exception e) {
             // Self-learning exception ignore
+        }
+    }
+
+    // API: 수동 즉시 자가 학습 (미등록으로 떴을 때 클릭 한 번으로 해당 교인에게 현시점 얼굴 포즈 학습 추가)
+    @PostMapping("/api/member/append-vector-manual")
+    @ResponseBody
+    public ResponseEntity<?> appendVectorManual(@RequestBody Map<String, Object> payload) {
+        Long memberId = null;
+        if (payload.get("memberId") instanceof Number) {
+            memberId = ((Number) payload.get("memberId")).longValue();
+        }
+        if (memberId == null) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "교인을 선택해 주세요."));
+        }
+
+        Member member = memberRepository.findById(memberId).orElse(null);
+        if (member == null) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "해당 교인을 찾을 수 없습니다."));
+        }
+
+        if (payload.containsKey("descriptor") && payload.get("descriptor") instanceof List) {
+            try {
+                @SuppressWarnings("unchecked")
+                List<Object> rawList = (List<Object>) payload.get("descriptor");
+                List<Double> doubleList = new ArrayList<>();
+                for (Object item : rawList) {
+                    if (item instanceof Number) {
+                        doubleList.add(((Number) item).doubleValue());
+                    }
+                }
+                if (doubleList.size() == 128) {
+                    boolean appended = forceAppendVector(member, doubleList);
+                    if (appended) {
+                        return ResponseEntity.ok(Map.of(
+                            "success", true,
+                            "message", "✨ '" + member.getName() + "' 교우님에게 현시점 얼굴 포즈 학습이 즉시 반영되었습니다!"
+                        ));
+                    }
+                }
+            } catch (Exception e) {
+                // Ignore errors
+            }
+        }
+        return ResponseEntity.badRequest().body(Map.of("success", false, "message", "얼굴 특징 데이터를 읽을 수 없습니다."));
+    }
+
+    // 강제 자가 학습 벡터 추가 보조 메서드 (최대 10개 한도 슬라이딩 윈도우)
+    private boolean forceAppendVector(Member member, List<Double> newVector) {
+        if (newVector == null || newVector.isEmpty() || member.getFaceDescriptor() == null) return false;
+        try {
+            List<double[]> existingList = parseDescriptorJson(member.getFaceDescriptor());
+            double[] newArr = newVector.stream().mapToDouble(Double::doubleValue).toArray();
+
+            if (existingList.size() >= 10) {
+                existingList.remove(3); // 초기 3개 등록 포즈 보존 + 4번째부터 슬라이딩 교체
+            }
+            existingList.add(newArr);
+
+            StringBuilder sb = new StringBuilder("[");
+            for (int i = 0; i < existingList.size(); i++) {
+                sb.append(Arrays.toString(existingList.get(i)));
+                if (i < existingList.size() - 1) sb.append(",");
+            }
+            sb.append("]");
+
+            member.setFaceDescriptor(sb.toString());
+            memberRepository.save(member);
+            return true;
+        } catch (Exception e) {
+            return false;
         }
     }
 
