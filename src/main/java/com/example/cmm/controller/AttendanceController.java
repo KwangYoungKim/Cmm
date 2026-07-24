@@ -11,6 +11,14 @@ import org.springframework.web.bind.annotation.*;
 
 import org.springframework.transaction.annotation.Transactional;
 
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.web.multipart.MultipartFile;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.InputStream;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -56,7 +64,7 @@ public class AttendanceController {
         return "members";
     }
 
-    // API: Register new member face (직분, 부서, 연락처 및 중복 검사 포함)
+    // API: Register new member face (직분, 부서, 연락처 및 사전 업로드 교인 연결 지원)
     @PostMapping("/api/member/register")
     @ResponseBody
     public ResponseEntity<?> registerMember(@RequestBody Map<String, Object> payload) {
@@ -66,37 +74,219 @@ public class AttendanceController {
         String department = (String) payload.get("department");
         String phone = (String) payload.get("phone");
         String profileImage = (String) payload.get("profileImage");
+        Long existingMemberId = null;
+
+        if (payload.get("memberId") instanceof Number) {
+            existingMemberId = ((Number) payload.get("memberId")).longValue();
+        }
 
         if (name == null || name.trim().isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("success", false, "message", "이름을 입력해 주세요."));
         }
 
         String trimmedName = name.trim();
+        String cleanPhone = phone != null ? phone.replaceAll("[^0-9]", "") : "";
 
-        // 1. 동일 인물 얼굴 중복 등록 검사 (벡터거리 < 0.42 - 골든 밸런스 기준)
-        if (faceDescriptor != null) {
+        // 1. 동일 인물 얼굴 중복 등록 검사 (벡터거리 < 0.48 - 골든 밸런스 기준)
+        if (faceDescriptor != null && !faceDescriptor.trim().isEmpty()) {
             List<Member> allMembers = memberRepository.findAll();
             for (Member existing : allMembers) {
-                double dist = calculateEuclideanDistance(faceDescriptor, existing.getFaceDescriptor());
-                if (dist < 0.42) { // 동일인 얼굴 중복 등록 방지 (0.42 최적 기준)
-                    String existingPos = existing.getPosition() != null ? existing.getPosition() : "교우";
-                    return ResponseEntity.ok(Map.of(
-                        "success", false,
-                        "alreadyRegistered", true,
-                        "message", "촬영된 얼굴은 이미 '" + existing.getName() + " (" + existingPos + ")' 님으로 등록되어 있습니다."
-                    ));
+                if (existingMemberId != null && existing.getId().equals(existingMemberId)) {
+                    continue; // 자기 자신의 기존 사전등록 레코드는 중복 검사 제외
+                }
+                if (existing.getFaceDescriptor() != null && !existing.getFaceDescriptor().trim().isEmpty()) {
+                    double dist = calculateEuclideanDistance(faceDescriptor, existing.getFaceDescriptor());
+                    if (dist < 0.48) { // 동일인 얼굴 중복 등록 방지
+                        String existingPos = existing.getPosition() != null ? existing.getPosition() : "교우";
+                        return ResponseEntity.ok(Map.of(
+                            "success", false,
+                            "alreadyRegistered", true,
+                            "message", "촬영된 얼굴은 이미 '" + existing.getName() + " (" + existingPos + ")' 님으로 등록되어 있습니다."
+                        ));
+                    }
                 }
             }
         }
 
-        Member member = new Member(trimmedName, faceDescriptor);
+        Member member = null;
+        if (existingMemberId != null) {
+            member = memberRepository.findById(existingMemberId).orElse(null);
+        }
+        if (member == null) {
+            // 사전 업로드 교인 중 얼굴 미등록 교인 매칭 검색
+            List<Member> existingList = memberRepository.findAll();
+            for (Member m : existingList) {
+                if (m.getName().equalsIgnoreCase(trimmedName) && (m.getFaceDescriptor() == null || m.getFaceDescriptor().trim().isEmpty())) {
+                    if (cleanPhone.isEmpty() || cleanPhone.equals(m.getPhone())) {
+                        member = m;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (member == null) {
+            member = new Member();
+            member.setName(trimmedName);
+        }
+
+        member.setFaceDescriptor(faceDescriptor);
         if (position != null && !position.trim().isEmpty()) member.setPosition(position.trim());
         if (department != null && !department.trim().isEmpty()) member.setDepartment(department.trim());
-        if (phone != null && !phone.trim().isEmpty()) member.setPhone(phone.trim());
+        if (!cleanPhone.isEmpty()) member.setPhone(cleanPhone);
         if (profileImage != null && !profileImage.trim().isEmpty()) member.setProfileImage(profileImage);
 
         memberRepository.save(member);
-        return ResponseEntity.ok(Map.of("success", true, "message", "'" + trimmedName + "' 교우님 등록이 완료되었습니다."));
+        return ResponseEntity.ok(Map.of("success", true, "message", "'" + trimmedName + "' 교우님의 얼굴 등록이 완료되었습니다."));
+    }
+
+    // API: Download Excel Template (.xlsx & .csv)
+    @GetMapping("/api/members/excel-template")
+    public void downloadExcelTemplate(HttpServletResponse response) {
+        try {
+            response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            response.setHeader("Content-Disposition", "attachment; filename=\"church_members_template.xlsx\"");
+
+            Workbook workbook = new XSSFWorkbook();
+            Sheet sheet = workbook.createSheet("교인명단업로드양식");
+
+            CellStyle headerStyle = workbook.createCellStyle();
+            Font font = workbook.createFont();
+            font.setBold(true);
+            font.setColor(IndexedColors.WHITE.getIndex());
+            headerStyle.setFont(font);
+            headerStyle.setFillForegroundColor(IndexedColors.DARK_BLUE.getIndex());
+            headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+            headerStyle.setAlignment(HorizontalAlignment.CENTER);
+
+            Row headerRow = sheet.createRow(0);
+            String[] headers = {"성명 *", "직분", "소속부서", "연락처"};
+            for (int i = 0; i < headers.length; i++) {
+                Cell cell = headerRow.createCell(i);
+                cell.setCellValue(headers[i]);
+                cell.setCellStyle(headerStyle);
+                sheet.setColumnWidth(i, 5000);
+            }
+
+            Object[][] samples = {
+                {"홍길동", "집사", "청년부", "010-1234-5678"},
+                {"김철수", "권사", "1교구", "010-9876-5432"},
+                {"이영희", "교우", "남선교회", "010-5555-7777"}
+            };
+
+            for (int r = 0; r < samples.length; r++) {
+                Row row = sheet.createRow(r + 1);
+                for (int c = 0; c < samples[r].length; c++) {
+                    row.createCell(c).setCellValue(samples[r][c].toString());
+                }
+            }
+
+            workbook.write(response.getOutputStream());
+            workbook.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    // API: Upload Excel / CSV Member List (미등록 교인 데이터 일괄 업로드)
+    @PostMapping("/api/members/upload-excel")
+    @ResponseBody
+    public ResponseEntity<?> uploadExcelMembers(@RequestParam("file") MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "업로드할 엑셀/CSV 파일을 선택해 주세요."));
+        }
+
+        String fileName = file.getOriginalFilename() != null ? file.getOriginalFilename().toLowerCase() : "";
+        int count = 0;
+
+        try {
+            if (fileName.endsWith(".xlsx") || fileName.endsWith(".xls")) {
+                Workbook workbook = WorkbookFactory.create(file.getInputStream());
+                Sheet sheet = workbook.getSheetAt(0);
+
+                for (int i = 1; i <= sheet.getLastRowNum(); i++) {
+                    Row row = sheet.getRow(i);
+                    if (row == null) continue;
+
+                    String name = getCellValue(row.getCell(0));
+                    if (name == null || name.trim().isEmpty()) continue;
+
+                    String position = getCellValue(row.getCell(1));
+                    String department = getCellValue(row.getCell(2));
+                    String phone = getCellValue(row.getCell(3));
+
+                    Member m = createMemberFromExcel(name, position, department, phone);
+                    if (m != null) {
+                        memberRepository.save(m);
+                        count++;
+                    }
+                }
+                workbook.close();
+            } else if (fileName.endsWith(".csv") || fileName.endsWith(".txt")) {
+                try (BufferedReader br = new BufferedReader(new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
+                    String line;
+                    boolean isHeader = true;
+                    while ((line = br.readLine()) != null) {
+                        if (line.startsWith("\uFEFF")) line = line.substring(1);
+                        if (isHeader) { isHeader = false; continue; }
+                        String[] parts = line.split(",");
+                        if (parts.length > 0 && !parts[0].trim().isEmpty()) {
+                            String name = parts[0].trim();
+                            String position = parts.length > 1 ? parts[1].trim() : "";
+                            String department = parts.length > 2 ? parts[2].trim() : "";
+                            String phone = parts.length > 3 ? parts[3].trim() : "";
+
+                            Member m = createMemberFromExcel(name, position, department, phone);
+                            if (m != null) {
+                                memberRepository.save(m);
+                                count++;
+                            }
+                        }
+                    }
+                }
+            } else {
+                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "엑셀(.xlsx, .xls) 또는 CSV(.csv) 파일만 업로드할 수 있습니다."));
+            }
+
+            return ResponseEntity.ok(Map.of("success", true, "count", count, "message", "총 " + count + "명의 교인 명단이 성공적으로 업로드되었습니다."));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "파일 읽기 오류: " + e.getMessage()));
+        }
+    }
+
+    private String getCellValue(Cell cell) {
+        if (cell == null) return "";
+        switch (cell.getCellType()) {
+            case STRING: return cell.getStringCellValue().trim();
+            case NUMERIC:
+                if (DateUtil.isCellDateFormatted(cell)) return cell.getDateCellValue().toString();
+                return String.valueOf((long) cell.getNumericCellValue());
+            case BOOLEAN: return String.valueOf(cell.getBooleanCellValue());
+            default: return "";
+        }
+    }
+
+    private Member createMemberFromExcel(String name, String position, String department, String phone) {
+        String trimmedName = name.trim();
+        String cleanPhone = phone != null ? phone.replaceAll("[^0-9]", "") : "";
+
+        List<Member> existing = memberRepository.findAll();
+        for (Member m : existing) {
+            if (m.getName().equalsIgnoreCase(trimmedName)) {
+                if (cleanPhone.isEmpty() || (m.getPhone() != null && m.getPhone().equals(cleanPhone))) {
+                    return null; // 중복 건 생략
+                }
+            }
+        }
+
+        Member m = new Member();
+        m.setName(trimmedName);
+        m.setPosition(position != null && !position.trim().isEmpty() ? position.trim() : "교우");
+        m.setDepartment(department != null && !department.trim().isEmpty() ? department.trim() : "");
+        m.setPhone(cleanPhone);
+        m.setFaceDescriptor(""); // 얼굴 미등록 상태
+        return m;
     }
 
     // API: Update member details (교인 정보 및 프로필 사진 수정)

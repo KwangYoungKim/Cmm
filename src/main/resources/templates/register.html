@@ -184,6 +184,62 @@
             pointer-events: none;
         }
 
+        .wing-left .side-icon-btn:hover::after,
+        .wing-right .side-icon-btn:hover::after {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        /* Chosung Autocomplete Dropdown */
+        .chosung-dropdown {
+            position: absolute;
+            top: 42px;
+            left: 0;
+            width: 280px;
+            max-height: 240px;
+            overflow-y: auto;
+            background: #1e293b;
+            border: 2px solid #0284c7;
+            border-radius: 10px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            text-align: left;
+        }
+
+        .chosung-item {
+            padding: 9px 14px;
+            cursor: pointer;
+            border-bottom: 1px solid #334155;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.88em;
+            color: #f8fafc;
+        }
+
+        .chosung-item:hover {
+            background: #0284c7;
+            color: #ffffff;
+        }
+
+        .chosung-badge-unregistered {
+            font-size: 0.72em;
+            background: #d97706;
+            color: #ffffff;
+            padding: 2px 7px;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+
+        .chosung-badge-registered {
+            font-size: 0.72em;
+            background: #10b981;
+            color: #ffffff;
+            padding: 2px 7px;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+
         .side-icon-btn:hover::after {
             opacity: 1;
             visibility: visible;
@@ -225,8 +281,11 @@
         </div>
 
         <!-- Member Inputs Row -->
-        <div class="inputs-row">
-            <input type="text" id="memberName" placeholder="성명 (예: 홍길동) *" disabled style="width: 150px;">
+        <div class="inputs-row" style="position: relative;">
+            <div style="position: relative; display: inline-block;">
+                <input type="text" id="memberName" placeholder="성명 / 초성 검색 (예: ㄱㄱㅇ, 홍길동) *" disabled style="width: 220px;" autocomplete="off" oninput="onNameInputSearch(this.value)">
+                <div id="chosungDropdown" class="chosung-dropdown" style="display: none;"></div>
+            </div>
             <select id="memberPosition" disabled onchange="handlePositionSelectChange()" style="width: 130px;">
                 <option value="교우">직분: 교우</option>
                 <option value="집사">집사</option>
@@ -315,12 +374,130 @@
             return positionInput.value;
         }
 
+        let allLoadedMembers = [];
+        let selectedMemberIdForRegistration = null;
+
+        const CHOSUNG_LIST = ['ㄱ', 'ㄲ', 'ㄴ', 'ㄷ', 'ㄸ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅃ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅉ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'];
+
+        function getChosung(str) {
+            if (!str) return '';
+            let result = '';
+            for (let i = 0; i < str.length; i++) {
+                const code = str.charCodeAt(i);
+                if (code >= 44032 && code <= 55203) {
+                    const index = Math.floor((code - 44032) / 588);
+                    result += CHOSUNG_LIST[index];
+                } else {
+                    result += str[i];
+                }
+            }
+            return result;
+        }
+
+        function matchChosung(targetName, query) {
+            if (!targetName || !query) return false;
+            const q = query.trim().toLowerCase();
+            const n = targetName.trim().toLowerCase();
+
+            if (n.includes(q)) return true;
+
+            const nameChosung = getChosung(n);
+            const queryChosung = getChosung(q);
+
+            return nameChosung.includes(queryChosung);
+        }
+
+        function formatPhoneNumber(phone) {
+            if (!phone) return '';
+            const digits = phone.replace(/[^0-9]/g, '');
+            if (digits.length === 11) return digits.replace(/(\d{3})(\d{4})(\d{4})/, '$1-$2-$3');
+            if (digits.length === 10) return digits.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3');
+            return digits;
+        }
+
+        function onNameInputSearch(query) {
+            const dropdown = document.getElementById('chosungDropdown');
+            if (!query || query.trim().length === 0) {
+                dropdown.style.display = 'none';
+                selectedMemberIdForRegistration = null;
+                return;
+            }
+
+            const matches = allLoadedMembers.filter(m => matchChosung(m.name, query));
+
+            if (matches.length === 0) {
+                dropdown.style.display = 'none';
+                return;
+            }
+
+            dropdown.innerHTML = matches.map(m => {
+                const hasFace = m.faceDescriptor && m.faceDescriptor.trim().length > 0;
+                const statusBadge = hasFace 
+                    ? `<span class="chosung-badge-registered">등록됨</span>`
+                    : `<span class="chosung-badge-unregistered">미등록 (사전업로드)</span>`;
+                const pos = m.position || '교우';
+                const dept = m.department ? ` • ${m.department}` : '';
+
+                return `
+                    <div class="chosung-item" onclick="selectMemberFromChosung(${m.id})">
+                        <div>
+                            <b>${m.name}</b> <small style="color:#94a3b8;">(${pos}${dept})</small>
+                        </div>
+                        ${statusBadge}
+                    </div>
+                `;
+            }).join('');
+
+            dropdown.style.display = 'block';
+        }
+
+        function selectMemberFromChosung(id) {
+            const m = allLoadedMembers.find(item => item.id === id);
+            if (!m) return;
+
+            selectedMemberIdForRegistration = m.id;
+            nameInput.value = m.name;
+
+            const standardPositions = ['교우', '집사', '권사', '장로', '목사', '전도사'];
+            const pos = m.position || '교우';
+            if (standardPositions.includes(pos)) {
+                positionInput.value = pos;
+                customPositionInput.style.display = 'none';
+                customPositionInput.value = '';
+            } else {
+                positionInput.value = '기타';
+                customPositionInput.style.display = 'inline-block';
+                customPositionInput.disabled = false;
+                customPositionInput.value = pos;
+            }
+
+            departmentInput.value = m.department || '';
+            phoneInput.value = m.phone ? formatPhoneNumber(m.phone) : '';
+
+            document.getElementById('chosungDropdown').style.display = 'none';
+            statusEl.style.color = '#38bdf8';
+            statusEl.innerText = `✨ '${m.name}' 사전 업로드 교인 선택 완료! 카메라를 보고 📸 캡처 버튼을 누르세요.`;
+
+            if (window.currentDescriptor && capturedDescriptors.length < 3) {
+                capturePoseBtn.disabled = false;
+            }
+        }
+
+        document.addEventListener('click', (e) => {
+            const dropdown = document.getElementById('chosungDropdown');
+            if (dropdown && !e.target.closest('#memberName') && !e.target.closest('#chosungDropdown')) {
+                dropdown.style.display = 'none';
+            }
+        });
+
         async function loadExistingMembers() {
             try {
                 const res = await fetch('/api/members');
                 const members = await res.json();
                 if (members && members.length > 0) {
-                    const labeledDescriptors = members.map(m => {
+                    allLoadedMembers = members;
+                    const validDescriptors = members.filter(m => m.faceDescriptor && m.faceDescriptor.trim().length > 0);
+                    const labeledDescriptors = validDescriptors.map(m => {
                         registeredMembersMap[m.id.toString()] = m.name;
                         const parsed = JSON.parse(m.faceDescriptor);
                         let float32Arrays = [];
@@ -333,7 +510,16 @@
                         }
                         return new faceapi.LabeledFaceDescriptors(m.id.toString(), float32Arrays);
                     });
-                    faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.48);
+                    if (labeledDescriptors.length > 0) {
+                        faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.48);
+                    }
+
+                    // Check URL parameter memberId
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const paramMemberId = urlParams.get('memberId');
+                    if (paramMemberId) {
+                        selectMemberFromChosung(parseInt(paramMemberId));
+                    }
                 }
             } catch (e) {
                 console.error("교인 목록 로딩 실패:", e);
@@ -591,6 +777,7 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
+                        memberId: selectedMemberIdForRegistration,
                         name: name,
                         position: getFinalPosition(),
                         department: departmentInput.value.trim(),

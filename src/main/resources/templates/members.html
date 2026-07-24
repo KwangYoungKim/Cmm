@@ -366,7 +366,12 @@
                     <option value="기타">기타 (수기입력)</option>
                 </select>
             </div>
-            <a href="/register" style="padding: 10px 20px; background-color: var(--accent); color: white; border-radius: 8px; text-decoration: none; font-weight: bold;">+ 신규 교인 등록</a>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <a href="/api/members/excel-template" style="padding: 10px 15px; background-color: #34495e; color: white; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 0.9em; display: inline-flex; align-items: center; gap: 5px;" title="엑셀 업로드용 양식 폼 다운로드">📥 엑셀 양식 다운로드</a>
+                <button type="button" onclick="document.getElementById('excelFileInput').click()" style="padding: 10px 15px; background-color: #0284c7; color: white; border: none; border-radius: 8px; font-weight: bold; font-size: 0.9em; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;">📤 엑셀 명단 업로드</button>
+                <input type="file" id="excelFileInput" accept=".xlsx,.xls,.csv" style="display: none;" onchange="uploadExcelFile(event)">
+                <a href="/register" style="padding: 10px 18px; background-color: var(--accent); color: white; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 0.9em;">+ 신규 얼굴 등록</a>
+            </div>
         </div>
 
         <!-- Member Table -->
@@ -514,6 +519,31 @@
             return digits;
         }
 
+        async function uploadExcelFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const res = await fetch('/api/members/upload-excel', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await res.json();
+                if (result.success) {
+                    alert("✨ " + result.message);
+                    event.target.value = '';
+                    await loadMembers();
+                } else {
+                    alert("⚠️ 업로드 실패: " + result.message);
+                }
+            } catch (e) {
+                alert("서버 연동 오류: " + e);
+            }
+        }
+
         function renderMembers() {
             const search = document.getElementById('searchInput').value.trim().toLowerCase();
             const posFilter = document.getElementById('positionFilter').value;
@@ -541,6 +571,11 @@
                     ? `<img src="${m.profileImage}" class="member-thumb" onclick="openPhotoModal(${m.id})" title="클릭하여 원본 사진 보기 및 변경">`
                     : `<div class="member-thumb-empty" onclick="openPhotoModal(${m.id})" title="클릭하여 사진 등록">👤</div>`;
 
+                const hasFace = m.faceDescriptor && m.faceDescriptor.trim().length > 0;
+                const faceBadgeHtml = hasFace
+                    ? `<span class="badge badge-face-ok">등록됨</span>`
+                    : `<a href="/register?memberId=${m.id}" class="badge" style="background:#fef3c7; color:#d97706; text-decoration:none;" title="클릭하여 얼굴 등록하기">미등록 (얼굴 등록)</a>`;
+
                 return `
                     <tr>
                         <td><b>${m.id}</b></td>
@@ -549,7 +584,7 @@
                         <td><span class="badge badge-position">${m.position || '교우'}</span></td>
                         <td>${m.department || '-'}</td>
                         <td><b>${formatPhoneNumber(m.phone)}</b></td>
-                        <td><span class="badge badge-face-ok">등록됨</span></td>
+                        <td>${faceBadgeHtml}</td>
                         <td>${createdDate}</td>
                         <td>
                             <button class="btn-action btn-edit" onclick="openEditModal(${m.id})">✏️ 수정</button>

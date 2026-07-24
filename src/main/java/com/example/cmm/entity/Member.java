@@ -13,7 +13,7 @@ public class Member {
     @Column(nullable = false)
     private String name;
 
-    @Column(columnDefinition = "TEXT", nullable = false)
+    @Column(columnDefinition = "TEXT", nullable = true)
     private String faceDescriptor;
 
     @Column(length = 50)
