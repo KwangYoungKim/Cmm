@@ -56,13 +56,19 @@
             background-color: var(--accent-color);
         }
 
-        .dashboard-grid {
-            display: grid;
-            grid-template-columns: 450px 1fr;
-            gap: 20px;
+        .container {
+            max-width: 1440px;
+            margin: 0 auto;
         }
 
-        @media (max-width: 1024px) {
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: minmax(580px, 1.2fr) 1fr;
+            gap: 24px;
+            align-items: start;
+        }
+
+        @media (max-width: 1100px) {
             .dashboard-grid {
                 grid-template-columns: 1fr;
             }
@@ -89,24 +95,38 @@
 
         #calendar {
             max-width: 100%;
+            min-height: 650px;
+        }
+
+        .fc .fc-daygrid-day-frame {
+            min-height: 90px;
+        }
+
+        .fc .fc-toolbar-title {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #1e293b;
         }
 
         .fc .fc-button-primary {
-            background-color: var(--primary-color);
-            border-color: var(--primary-color);
+            background-color: #334155;
+            border-color: #334155;
+            font-weight: bold;
         }
 
         .fc .fc-button-primary:hover {
-            background-color: var(--accent-color);
-            border-color: var(--accent-color);
+            background-color: #0f766e;
+            border-color: #0f766e;
         }
 
         .fc-event {
             cursor: pointer;
-            background-color: #27ae60 !important;
-            border-color: #27ae60 !important;
+            background-color: #0f766e !important;
+            border-color: #0d9488 !important;
             text-align: center;
             font-weight: bold;
+            padding: 2px 4px;
+            border-radius: 4px;
         }
 
         .chart-container {
@@ -153,14 +173,15 @@
 </head>
 <body>
 
-    <div class="header-bar">
-        <h1>📊 교인 출석 통계 & 캘린더 대시보드 (포트: 8081)</h1>
-        <div class="nav-links">
-            <a href="/attendance">📷 출석 체크 화면</a>
-            <a href="/members">👥 교인 명단 & 수정</a>
-            <a href="/register">👤 교인 얼굴 등록</a>
+    <div class="container">
+        <div class="header-bar">
+            <h1>📊 교인 출석 통계 & 캘린더 대시보드 (포트: 8081)</h1>
+            <div class="nav-links">
+                <a href="/attendance">📷 출석 체크 화면</a>
+                <a href="/members">👥 교인 명단 & 수정</a>
+                <a href="/register">👤 교인 얼굴 등록</a>
+            </div>
         </div>
-    </div>
 
     <div class="dashboard-grid">
         <!-- 좌측: 출석 캘린더 -->
@@ -225,6 +246,10 @@
             calendar = new FullCalendar.Calendar(calendarEl, {
                 initialView: 'dayGridMonth',
                 locale: 'ko',
+                height: 'auto',
+                contentHeight: 'auto',
+                expandRows: true,
+                aspectRatio: 1.25,
                 headerToolbar: {
                     left: 'prev,next today',
                     center: 'title',
