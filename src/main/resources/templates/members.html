@@ -189,20 +189,41 @@
 
         .btn-action {
             padding: 7px 14px;
-            border: none;
-            border-radius: 6px;
-            font-weight: bold;
+            border-radius: 8px;
+            font-weight: 600;
             font-size: 0.85em;
             cursor: pointer;
-            transition: opacity 0.2s;
+            transition: all 0.2s ease;
             margin-right: 4px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
         }
 
-        .btn-edit { background-color: #3b82f6; color: white; }
-        .btn-edit:hover { opacity: 0.9; }
+        /* 차분하고 세련된 파스텔 톤 수정/삭제 버튼 */
+        .btn-edit {
+            background-color: #f0f9ff;
+            color: #0369a1;
+            border: 1px solid #bae6fd;
+        }
+        .btn-edit:hover {
+            background-color: #e0f2fe;
+            color: #0284c7;
+            border-color: #7dd3fc;
+            box-shadow: 0 2px 6px rgba(3, 105, 161, 0.12);
+        }
 
-        .btn-delete { background-color: var(--danger); color: white; }
-        .btn-delete:hover { opacity: 0.9; }
+        .btn-delete {
+            background-color: #fef2f2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+        .btn-delete:hover {
+            background-color: #fee2e2;
+            color: #7f1d1d;
+            border-color: #fca5a5;
+            box-shadow: 0 2px 6px rgba(153, 27, 27, 0.12);
+        }
 
         /* Modal Overlay */
         .modal-overlay {
@@ -267,23 +288,33 @@
         }
 
         .btn-cancel {
-            background: #94a3b8;
-            color: white;
+            background: #f1f5f9;
+            color: #475569;
             padding: 10px 20px;
-            border: none;
+            border: 1px solid #cbd5e1;
             border-radius: 8px;
             font-weight: bold;
             cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .btn-cancel:hover {
+            background: #e2e8f0;
+            color: #1e293b;
         }
 
         .btn-save {
-            background: var(--accent);
+            background: #0369a1;
             color: white;
             padding: 10px 20px;
             border: none;
             border-radius: 8px;
             font-weight: bold;
             cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .btn-save:hover {
+            background: #0284c7;
+            box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25);
         }
 
         .empty-msg {
@@ -367,10 +398,10 @@
                 </select>
             </div>
             <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                <a href="/api/members/excel-template" style="padding: 10px 15px; background-color: #34495e; color: white; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 0.9em; display: inline-flex; align-items: center; gap: 5px;" title="엑셀 업로드용 양식 폼 다운로드">📥 엑셀 양식 다운로드</a>
-                <button type="button" onclick="document.getElementById('excelFileInput').click()" style="padding: 10px 15px; background-color: #0284c7; color: white; border: none; border-radius: 8px; font-weight: bold; font-size: 0.9em; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;">📤 엑셀 명단 업로드</button>
+                <a href="/api/members/excel-template" style="padding: 9px 15px; background-color: #f8fafc; color: #334155; border: 1px solid #cbd5e1; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 0.88em; display: inline-flex; align-items: center; gap: 5px; transition: all 0.2s ease;" title="엑셀 업로드용 양식 폼 다운로드">📥 엑셀 양식 다운로드</a>
+                <button type="button" onclick="document.getElementById('excelFileInput').click()" style="padding: 9px 15px; background-color: #f0f9ff; color: #0369a1; border: 1px solid #bae6fd; border-radius: 8px; font-weight: bold; font-size: 0.88em; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; transition: all 0.2s ease;">📤 엑셀 명단 업로드</button>
                 <input type="file" id="excelFileInput" accept=".xlsx,.xls,.csv" style="display: none;" onchange="uploadExcelFile(event)">
-                <a href="/register" style="padding: 10px 18px; background-color: var(--accent); color: white; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 0.9em;">+ 신규 얼굴 등록</a>
+                <a href="/register" style="padding: 9px 18px; background-color: #0f766e; color: white; border: 1px solid #0d9488; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 0.88em; transition: all 0.2s ease;">+ 신규 얼굴 등록</a>
             </div>
         </div>
 
