@@ -12,27 +12,90 @@
             background-color: #2c3e50;
             color: white;
             margin: 0;
-            padding: 10px 15px;
-            box-sizing: border-radius;
+            padding: 15px 20px;
         }
 
-        h1 {
+        /* Top Header Bar */
+        .top-header-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 900px;
+            margin: 0 auto 12px auto;
+            padding: 10px 20px;
+            background: #34495e;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .top-header-bar h1 {
             font-size: 1.8em;
-            margin: 4px 0 2px 0;
+            margin: 0;
             color: #ffffff;
         }
 
+        .header-nav {
+            display: flex;
+            gap: 10px;
+        }
+
+        .admin-link-btn {
+            color: #ecf0f1;
+            background-color: #2c3e50;
+            padding: 8px 15px;
+            font-size: 0.9em;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: bold;
+            border: 1px solid #7f8c8d;
+            transition: all 0.2s;
+        }
+
+        .admin-link-btn:hover {
+            background-color: #1abc9c;
+            color: white;
+            border-color: #1abc9c;
+        }
+
+        /* Sub Info Bar */
+        .sub-info-bar {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 18px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+
+        .counter-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #16a085, #2ecc71);
+            color: white;
+            font-size: 1.15em;
+            font-weight: bold;
+            padding: 6px 22px;
+            border-radius: 20px;
+            box-shadow: 0 3px 10px rgba(46, 204, 113, 0.3);
+        }
+
+        #status {
+            font-size: 1.15em;
+            font-weight: bold;
+            color: #ecf0f1;
+        }
+
+        /* Video Container - Original Size Maintained */
         #video-container {
             position: relative;
             display: inline-block;
-            margin-top: 6px;
         }
 
         video {
-            border-radius: 14px;
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
-            max-height: 52vh;
-            width: auto;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            display: block;
         }
 
         canvas {
@@ -41,30 +104,10 @@
             left: 0;
         }
 
-        #status {
-            margin-top: 6px;
-            font-size: 1.15em;
-            font-weight: bold;
-            min-height: 24px;
-            color: #ecf0f1;
-        }
-
-        .counter-badge {
-            display: inline-block;
-            background: linear-gradient(135deg, #16a085, #2ecc71);
-            color: white;
-            font-size: 1.1em;
-            font-weight: bold;
-            padding: 5px 18px;
-            border-radius: 20px;
-            margin: 2px 0;
-            box-shadow: 0 3px 10px rgba(46, 204, 113, 0.3);
-        }
-
         .toast {
             position: fixed;
-            top: 30px;
-            right: 30px;
+            top: 40px;
+            right: 40px;
             background-color: #27ae60;
             color: white;
             padding: 20px 30px;
@@ -76,31 +119,16 @@
             font-weight: bold;
         }
 
-        .admin-link-btn {
-            color: #ecf0f1;
-            background-color: #34495e;
-            padding: 8px 16px;
-            font-size: 0.9em;
-            border-radius: 6px;
-            text-decoration: none;
-            font-weight: bold;
-            border: 1px solid #7f8c8d;
-            transition: background 0.3s;
-        }
-
-        .admin-link-btn:hover {
-            background-color: #4e6d8c;
-        }
-
         .flip-btn {
-            margin-top: 6px;
-            padding: 6px 14px;
-            font-size: 0.85em;
+            margin-top: 12px;
+            padding: 8px 18px;
+            font-size: 0.9em;
             background-color: #34495e;
             color: white;
             border: 1px solid #7f8c8d;
             border-radius: 6px;
             cursor: pointer;
+            font-weight: bold;
         }
 
         .flip-btn:hover {
@@ -194,22 +222,31 @@
 </head>
 
 <body>
-    <h1>주일 예배 무인 출석</h1>
-    <div class="counter-badge">오늘 출석 교인 수: <span id="todayCount">0</span>명</div>
-    <div id="status">시스템 준비 중... 잠시만 기다려주세요.</div>
+    <!-- Top Header Bar with Title & Nav Buttons -->
+    <div class="top-header-bar">
+        <h1>주일 예배 무인 출석</h1>
+        <div class="header-nav">
+            <a href="/stats" class="admin-link-btn">📊 출석 통계 & 캘린더</a>
+            <a href="/members" class="admin-link-btn">👥 교인 명단 & 수정</a>
+            <a href="/register" class="admin-link-btn">👤 교인 얼굴 등록</a>
+        </div>
+    </div>
+
+    <!-- Sub Info Bar (Badge & Status) -->
+    <div class="sub-info-bar">
+        <div class="counter-badge">오늘 출석 교인 수: <span id="todayCount">0</span>명</div>
+        <div id="status">시스템 준비 중... 잠시만 기다려주세요.</div>
+    </div>
+
+    <!-- Main Camera Video (Original Size Maintained) -->
     <div id="video-container">
-        <video id="video" width="640" height="480" autoplay muted></video>
+        <video id="video" width="800" height="600" autoplay muted></video>
     </div>
     <div>
         <button class="flip-btn" onclick="toggleFlip()">🔄 카메라 좌우 반전 전환</button>
     </div>
 
     <div id="toast" class="toast">출석 완료!</div>
-    <div style="margin-top: 10px; display: flex; justify-content: center; gap: 12px;">
-        <a href="/stats" class="admin-link-btn">📊 출석 통계 & 캘린더 대시보드</a>
-        <a href="/members" class="admin-link-btn">👥 교인 명단 & 수정 관리</a>
-        <a href="/register" class="admin-link-btn">👤 교인 얼굴 등록</a>
-    </div>
 
     <!-- 미등록 교인/방문자 출석 및 등록 안내 모달 -->
     <div id="unregisteredModal" class="modal-overlay" style="display:none;">
@@ -395,7 +432,7 @@
                 return;
             }
 
-            navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } })
+            navigator.mediaDevices.getUserMedia({ video: { width: 800, height: 600 } })
                 .then(stream => {
                     video.srcObject = stream;
                     applyFlip();
