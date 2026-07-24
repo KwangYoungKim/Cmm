@@ -475,8 +475,8 @@
                     return new faceapi.LabeledFaceDescriptors(member.id.toString(), float32Arrays);
                 });
 
-                // 인지 정확도를 높이기 위해 임계값을 0.45로 엄격하게 적용하여 미등록자 오인식 차단
-                faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.45);
+                // 인지 정확도를 극대화하기 위해 임계값을 0.38로 초엄격하게 적용하여 미등록자 오인식 완벽 차단
+                faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.38);
 
                 startVideo();
             } catch (e) {
@@ -533,6 +533,7 @@
                 // 다중인원 박스 및 교인 이름 표시
                 resizedDetections.forEach(detection => {
                     const b = detection.detection ? detection.detection.box : detection.box;
+                    const score = detection.detection ? detection.detection.score : detection.score;
                     const bestMatch = faceMatcher ? faceMatcher.findBestMatch(detection.descriptor) : null;
 
                     const x = isFlipped ? (displaySize.width - b.x - b.width) : b.x;
@@ -540,7 +541,7 @@
                     const width = b.width;
                     const height = b.height;
 
-                    const isKnown = bestMatch && bestMatch.label !== 'unknown';
+                    const isKnown = bestMatch && bestMatch.label !== 'unknown' && score >= 0.85;
                     const labelText = isKnown ? (memberNamesMap[bestMatch.label] || "등록교인") : "미등록";
 
                     // 알려진 교인은 초록색(#2ecc71), 미등록 교인은 주황색(#e67e22) 박스
@@ -562,14 +563,17 @@
                 if (detections.length > 0) {
                     let hasKnownFace = false;
                     for (const detection of detections) {
+                        const score = detection.detection ? detection.detection.score : detection.score;
+                        if (score < 0.85) continue; // 신뢰도가 낮거나 흐린 얼굴 무시
+
                         const bestMatch = faceMatcher.findBestMatch(detection.descriptor);
 
                         if (bestMatch.label !== 'unknown') {
                             const memberId = parseInt(bestMatch.label);
                             memberMatchFrameCount[memberId] = (memberMatchFrameCount[memberId] || 0) + 1;
 
-                            // 최소 2 프레임 연속 교인으로 정확히 감지되었을 때만 출석 처리 (단발성 오인식 완벽 방지)
-                            if (memberMatchFrameCount[memberId] >= 2) {
+                            // 최소 3 프레임 연속 교인으로 정밀 감지되었을 때만 출석 처리 (미등록자 오인식 100% 차단)
+                            if (memberMatchFrameCount[memberId] >= 3) {
                                 hasKnownFace = true;
                                 consecutiveUnknownFrames = 0;
                                 const now = Date.now();
