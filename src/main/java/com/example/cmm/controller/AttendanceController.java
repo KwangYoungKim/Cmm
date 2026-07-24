@@ -130,10 +130,15 @@ public class AttendanceController {
             member.setName(trimmedName);
         }
 
+        String gender = (String) payload.get("gender");
+        String birthDate = (String) payload.get("birthDate");
+
         member.setFaceDescriptor(faceDescriptor);
         if (position != null && !position.trim().isEmpty()) member.setPosition(position.trim());
         if (department != null && !department.trim().isEmpty()) member.setDepartment(department.trim());
         if (!cleanPhone.isEmpty()) member.setPhone(cleanPhone);
+        if (gender != null && !gender.trim().isEmpty()) member.setGender(gender.trim());
+        if (birthDate != null && !birthDate.trim().isEmpty()) member.setBirthDate(birthDate.trim());
         if (profileImage != null && !profileImage.trim().isEmpty()) member.setProfileImage(profileImage);
 
         memberRepository.save(member);
@@ -160,18 +165,18 @@ public class AttendanceController {
             headerStyle.setAlignment(HorizontalAlignment.CENTER);
 
             Row headerRow = sheet.createRow(0);
-            String[] headers = {"성명 *", "직분", "소속부서", "연락처"};
+            String[] headers = {"성명 *", "직분", "소속부서", "연락처", "성별", "생년월일"};
             for (int i = 0; i < headers.length; i++) {
                 Cell cell = headerRow.createCell(i);
                 cell.setCellValue(headers[i]);
                 cell.setCellStyle(headerStyle);
-                sheet.setColumnWidth(i, 5000);
+                sheet.setColumnWidth(i, 4500);
             }
 
             Object[][] samples = {
-                {"홍길동", "집사", "청년부", "010-1234-5678"},
-                {"김철수", "권사", "1교구", "010-9876-5432"},
-                {"이영희", "교우", "남선교회", "010-5555-7777"}
+                {"홍길동", "집사", "청년부", "010-1234-5678", "남", "1990-01-01"},
+                {"김철수", "권사", "1교구", "010-9876-5432", "남", "1975-05-15"},
+                {"이영희", "교우", "남선교회", "010-5555-7777", "여", "1988-10-20"}
             };
 
             for (int r = 0; r < samples.length; r++) {
@@ -214,8 +219,10 @@ public class AttendanceController {
                     String position = getCellValue(row.getCell(1));
                     String department = getCellValue(row.getCell(2));
                     String phone = getCellValue(row.getCell(3));
+                    String gender = getCellValue(row.getCell(4));
+                    String birthDate = getCellValue(row.getCell(5));
 
-                    Member m = createMemberFromExcel(name, position, department, phone);
+                    Member m = createMemberFromExcel(name, position, department, phone, gender, birthDate);
                     if (m != null) {
                         memberRepository.save(m);
                         count++;
@@ -235,8 +242,10 @@ public class AttendanceController {
                             String position = parts.length > 1 ? parts[1].trim() : "";
                             String department = parts.length > 2 ? parts[2].trim() : "";
                             String phone = parts.length > 3 ? parts[3].trim() : "";
+                            String gender = parts.length > 4 ? parts[4].trim() : "";
+                            String birthDate = parts.length > 5 ? parts[5].trim() : "";
 
-                            Member m = createMemberFromExcel(name, position, department, phone);
+                            Member m = createMemberFromExcel(name, position, department, phone, gender, birthDate);
                             if (m != null) {
                                 memberRepository.save(m);
                                 count++;
@@ -267,7 +276,7 @@ public class AttendanceController {
         }
     }
 
-    private Member createMemberFromExcel(String name, String position, String department, String phone) {
+    private Member createMemberFromExcel(String name, String position, String department, String phone, String gender, String birthDate) {
         String trimmedName = name.trim();
         String cleanPhone = phone != null ? phone.replaceAll("[^0-9]", "") : "";
 
@@ -280,11 +289,21 @@ public class AttendanceController {
             }
         }
 
+        String formattedGender = "";
+        if (gender != null && !gender.trim().isEmpty()) {
+            String g = gender.trim();
+            if (g.contains("남") || g.equalsIgnoreCase("M") || g.equalsIgnoreCase("MALE")) formattedGender = "남";
+            else if (g.contains("여") || g.equalsIgnoreCase("F") || g.equalsIgnoreCase("FEMALE")) formattedGender = "여";
+            else formattedGender = g;
+        }
+
         Member m = new Member();
         m.setName(trimmedName);
         m.setPosition(position != null && !position.trim().isEmpty() ? position.trim() : "교우");
         m.setDepartment(department != null && !department.trim().isEmpty() ? department.trim() : "");
         m.setPhone(cleanPhone);
+        m.setGender(formattedGender);
+        m.setBirthDate(birthDate != null ? birthDate.trim() : "");
         m.setFaceDescriptor(""); // 얼굴 미등록 상태
         return m;
     }
@@ -302,6 +321,8 @@ public class AttendanceController {
         String position = (String) payload.get("position");
         String department = (String) payload.get("department");
         String phone = (String) payload.get("phone");
+        String gender = (String) payload.get("gender");
+        String birthDate = (String) payload.get("birthDate");
         String profileImage = (String) payload.get("profileImage");
         String faceDescriptor = (String) payload.get("descriptor");
 
@@ -309,6 +330,8 @@ public class AttendanceController {
         if (position != null) member.setPosition(position.trim());
         if (department != null) member.setDepartment(department.trim());
         if (phone != null) member.setPhone(phone.trim());
+        if (gender != null) member.setGender(gender.trim());
+        if (birthDate != null) member.setBirthDate(birthDate.trim());
         if (profileImage != null) member.setProfileImage(profileImage);
         if (faceDescriptor != null && !faceDescriptor.trim().isEmpty()) member.setFaceDescriptor(faceDescriptor);
 

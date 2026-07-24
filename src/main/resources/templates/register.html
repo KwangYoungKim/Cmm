@@ -296,8 +296,14 @@
                 <option value="기타">기타 (수기 입력)</option>
             </select>
             <input type="text" id="customPositionInput" placeholder="직분 수기 입력" disabled style="display: none; width: 140px; border-color: #38bdf8;">
-            <input type="text" id="memberDepartment" placeholder="부서 (예: 청년부)" disabled style="width: 150px;">
-            <input type="text" id="memberPhone" placeholder="연락처 (예: 010-1234-5678)" disabled style="width: 170px;">
+            <input type="text" id="memberDepartment" placeholder="부서 (예: 청년부)" disabled style="width: 140px;">
+            <input type="text" id="memberPhone" placeholder="연락처 (예: 010-1234-5678)" disabled style="width: 160px;">
+            <select id="memberGender" disabled style="width: 85px;">
+                <option value="">성별</option>
+                <option value="남">남</option>
+                <option value="여">여</option>
+            </select>
+            <input type="text" id="memberBirthDate" placeholder="생년월일 (예: 1990-01-01)" disabled style="width: 160px;">
         </div>
     </div>
 
@@ -343,6 +349,8 @@
         const customPositionInput = document.getElementById('customPositionInput');
         const departmentInput = document.getElementById('memberDepartment');
         const phoneInput = document.getElementById('memberPhone');
+        const genderInput = document.getElementById('memberGender');
+        const birthDateInput = document.getElementById('memberBirthDate');
         const capturePoseBtn = document.getElementById('capturePoseBtn');
         const registerBtn = document.getElementById('registerBtn');
         const resetPoseBtn = document.getElementById('resetPoseBtn');
@@ -473,6 +481,8 @@
 
             departmentInput.value = m.department || '';
             phoneInput.value = m.phone ? formatPhoneNumber(m.phone) : '';
+            genderInput.value = m.gender || '';
+            birthDateInput.value = m.birthDate || '';
 
             document.getElementById('chosungDropdown').style.display = 'none';
             statusEl.style.color = '#38bdf8';
@@ -569,6 +579,8 @@
                     positionInput.disabled = false;
                     departmentInput.disabled = false;
                     phoneInput.disabled = false;
+                    genderInput.disabled = false;
+                    birthDateInput.disabled = false;
                 })
                 .catch(err => {
                     console.error("카메라 접근 오류:", err);
@@ -782,6 +794,8 @@
                         position: getFinalPosition(),
                         department: departmentInput.value.trim(),
                         phone: phoneInput.value.trim(),
+                        gender: genderInput.value.trim(),
+                        birthDate: birthDateInput.value.trim(),
                         profileImage: frontProfileThumbnail,
                         descriptor: descriptorsPayload
                     })
@@ -795,6 +809,8 @@
                     positionInput.value = '교우';
                     departmentInput.value = '';
                     phoneInput.value = '';
+                    genderInput.value = '';
+                    birthDateInput.value = '';
                     resetPoses();
                     await loadExistingMembers();
                 } else {
