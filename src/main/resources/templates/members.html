@@ -497,6 +497,23 @@
             document.getElementById('positionSummary').innerText = summaryStr || '없음';
         }
 
+        function formatPhoneNumber(phone) {
+            if (!phone) return '-';
+            const digits = phone.replace(/[^0-9]/g, '');
+            if (digits.length === 11) {
+                return digits.replace(/(\d{3})(\d{4})(\d{4})/, '$1-$2-$3');
+            } else if (digits.length === 10) {
+                if (digits.startsWith('02')) {
+                    return digits.replace(/(\d{2})(\d{4})(\d{4})/, '$1-$2-$3');
+                } else {
+                    return digits.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3');
+                }
+            } else if (digits.length === 9 && digits.startsWith('02')) {
+                return digits.replace(/(\d{2})(\d{3})(\d{4})/, '$1-$2-$3');
+            }
+            return digits;
+        }
+
         function renderMembers() {
             const search = document.getElementById('searchInput').value.trim().toLowerCase();
             const posFilter = document.getElementById('positionFilter').value;
@@ -531,7 +548,7 @@
                         <td><b>${m.name}</b></td>
                         <td><span class="badge badge-position">${m.position || '교우'}</span></td>
                         <td>${m.department || '-'}</td>
-                        <td>${m.phone || '-'}</td>
+                        <td><b>${formatPhoneNumber(m.phone)}</b></td>
                         <td><span class="badge badge-face-ok">등록됨</span></td>
                         <td>${createdDate}</td>
                         <td>
@@ -684,7 +701,7 @@
             }
 
             document.getElementById('editDepartment').value = m.department || '';
-            document.getElementById('editPhone').value = m.phone || '';
+            document.getElementById('editPhone').value = m.phone ? formatPhoneNumber(m.phone) : '';
             document.getElementById('editModal').style.display = 'flex';
         }
 

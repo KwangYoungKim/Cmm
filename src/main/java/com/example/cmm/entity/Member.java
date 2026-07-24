@@ -77,7 +77,31 @@ public class Member {
     public void setPosition(String position) { this.position = position; }
 
     public String getPhone() { return phone; }
-    public void setPhone(String phone) { this.phone = phone; }
+    public void setPhone(String phone) {
+        if (phone != null) {
+            this.phone = phone.replaceAll("[^0-9]", "");
+        } else {
+            this.phone = null;
+        }
+    }
+
+    @Transient
+    public String getFormattedPhone() {
+        if (phone == null || phone.isEmpty()) return "";
+        String digits = phone.replaceAll("[^0-9]", "");
+        if (digits.length() == 11) {
+            return digits.replaceAll("(\\d{3})(\\d{4})(\\d{4})", "$1-$2-$3");
+        } else if (digits.length() == 10) {
+            if (digits.startsWith("02")) {
+                return digits.replaceAll("(\\d{2})(\\d{4})(\\d{4})", "$1-$2-$3");
+            } else {
+                return digits.replaceAll("(\\d{3})(\\d{3})(\\d{4})", "$1-$2-$3");
+            }
+        } else if (digits.length() == 9 && digits.startsWith("02")) {
+            return digits.replaceAll("(\\d{2})(\\d{3})(\\d{4})", "$1-$2-$3");
+        }
+        return digits;
+    }
 
     public String getGender() { return gender; }
     public void setGender(String gender) { this.gender = gender; }
