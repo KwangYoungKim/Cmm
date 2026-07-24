@@ -15,75 +15,84 @@
             padding: 15px 20px;
         }
 
-        /* Top Header Bar */
-        .top-header-bar {
+        /* Top Header Container Matching Mockup Image */
+        .top-header-container {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            max-width: 900px;
+            max-width: 800px;
             margin: 0 auto 12px auto;
-            padding: 10px 20px;
+            padding: 8px 15px;
             background: #34495e;
             border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-            flex-wrap: wrap;
-            gap: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
+            gap: 15px;
+            box-sizing: border-box;
         }
 
-        .top-header-bar h1 {
-            font-size: 1.8em;
+        .header-left h1 {
+            font-size: 2em;
+            font-weight: bold;
             margin: 0;
             color: #ffffff;
+            white-space: nowrap;
+            text-align: left;
         }
 
-        .header-nav {
+        .header-center {
             display: flex;
-            gap: 10px;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            flex: 1;
+        }
+
+        .counter-badge {
+            background-color: #2ecc71;
+            color: white;
+            font-size: 1.25em;
+            font-weight: bold;
+            padding: 8px 24px;
+            border-radius: 6px;
+            box-shadow: 0 3px 10px rgba(46, 204, 113, 0.4);
+            white-space: nowrap;
+        }
+
+        #status {
+            font-size: 0.95em;
+            font-weight: bold;
+            color: #ffffff;
+            min-height: 18px;
+            margin: 0;
+            white-space: nowrap;
+        }
+
+        .header-right {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            align-items: flex-end;
         }
 
         .admin-link-btn {
-            color: #ecf0f1;
+            color: #ffffff;
             background-color: #2c3e50;
-            padding: 8px 15px;
-            font-size: 0.9em;
+            padding: 6px 12px;
+            font-size: 0.85em;
             border-radius: 6px;
             text-decoration: none;
             font-weight: bold;
-            border: 1px solid #7f8c8d;
-            transition: all 0.2s;
+            border: 1px solid #546e7a;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+            width: 140px;
+            text-align: center;
+            box-sizing: border-box;
         }
 
         .admin-link-btn:hover {
             background-color: #1abc9c;
-            color: white;
             border-color: #1abc9c;
-        }
-
-        /* Sub Info Bar */
-        .sub-info-bar {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 18px;
-            margin-bottom: 12px;
-            flex-wrap: wrap;
-        }
-
-        .counter-badge {
-            display: inline-block;
-            background: linear-gradient(135deg, #16a085, #2ecc71);
-            color: white;
-            font-size: 1.15em;
-            font-weight: bold;
-            padding: 6px 22px;
-            border-radius: 20px;
-            box-shadow: 0 3px 10px rgba(46, 204, 113, 0.3);
-        }
-
-        #status {
-            font-size: 1.15em;
-            font-weight: bold;
-            color: #ecf0f1;
         }
 
         /* Video Container - Original Size Maintained */
@@ -222,20 +231,25 @@
 </head>
 
 <body>
-    <!-- Top Header Bar with Title & Nav Buttons -->
-    <div class="top-header-bar">
-        <h1>주일 예배 무인 출석</h1>
-        <div class="header-nav">
-            <a href="/stats" class="admin-link-btn">📊 출석 통계 & 캘린더</a>
-            <a href="/members" class="admin-link-btn">👥 교인 명단 & 수정</a>
-            <a href="/register" class="admin-link-btn">👤 교인 얼굴 등록</a>
+    <!-- Top Header Container Matching Mockup Image -->
+    <div class="top-header-container">
+        <!-- Left: Title -->
+        <div class="header-left">
+            <h1>주일 예배 참석 확인</h1>
         </div>
-    </div>
 
-    <!-- Sub Info Bar (Badge & Status) -->
-    <div class="sub-info-bar">
-        <div class="counter-badge">오늘 출석 교인 수: <span id="todayCount">0</span>명</div>
-        <div id="status">시스템 준비 중... 잠시만 기다려주세요.</div>
+        <!-- Center: Badge & Status Message -->
+        <div class="header-center">
+            <div class="counter-badge">오늘 출석 교인 수: <span id="todayCount">0</span>명</div>
+            <div id="status">시스템 준비 중... 잠시만 기다려주세요.</div>
+        </div>
+
+        <!-- Right: Vertical Button Stack -->
+        <div class="header-right">
+            <a href="/register" class="admin-link-btn">👤 교인 얼굴 등록</a>
+            <a href="/members" class="admin-link-btn">👥 교인 명단 & 수정</a>
+            <a href="/stats" class="admin-link-btn">📊 출석 통계 & 캘린더</a>
+        </div>
     </div>
 
     <!-- Main Camera Video (Original Size Maintained) -->
