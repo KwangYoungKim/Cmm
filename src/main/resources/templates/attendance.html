@@ -12,33 +12,34 @@
             background-color: #2c3e50;
             color: white;
             margin: 0;
-            padding: 15px 20px;
+            padding: 10px 15px;
         }
 
-        /* Top Header Container */
+        /* Compact Header Container */
         .top-header-container {
-            max-width: 820px;
-            margin: 0 auto 12px auto;
-            padding: 12px 18px;
+            max-width: 800px;
+            margin: 0 auto 10px auto;
+            padding: 8px 16px;
             background: #34495e;
-            border-radius: 16px;
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            box-sizing: border-box;
-        }
-
-        .top-header-row {
+            border-radius: 14px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
             display: flex;
             justify-content: space-between;
             align-items: center;
-            flex-wrap: wrap;
-            gap: 10px;
+            gap: 12px;
+            box-sizing: border-box;
+        }
+
+        .header-left {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 4px;
+            flex: 1;
         }
 
         .header-left h1 {
-            font-size: 1.8em;
+            font-size: 1.6em;
             font-weight: bold;
             margin: 0;
             color: #ffffff;
@@ -46,33 +47,61 @@
             white-space: nowrap;
         }
 
-        /* Horizontal Icon Button Stack */
-        .header-nav-bar {
+        .header-sub-info {
             display: flex;
-            gap: 8px;
             align-items: center;
+            gap: 10px;
             flex-wrap: wrap;
         }
 
-        .icon-nav-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 7px 13px;
-            font-size: 0.85em;
+        .counter-badge {
+            background-color: #2ecc71;
+            color: white;
+            font-size: 1em;
             font-weight: bold;
-            color: #ffffff;
+            padding: 4px 14px;
+            border-radius: 6px;
+            box-shadow: 0 2px 6px rgba(46, 204, 113, 0.4);
+            white-space: nowrap;
+        }
+
+        #status {
+            font-size: 0.9em;
+            font-weight: bold;
+            color: #ecf0f1;
+            margin: 0;
+            white-space: nowrap;
+        }
+
+        /* 2x2 Grid of Icon-Only Buttons */
+        .header-right-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 40px);
+            grid-gap: 6px;
+            align-items: center;
+        }
+
+        .icon-bubble-btn {
+            position: relative;
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.2em;
+            color: white;
             text-decoration: none;
-            border-radius: 8px;
             border: none;
             cursor: pointer;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
             transition: all 0.2s ease-in-out;
         }
 
-        .icon-nav-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+        .icon-bubble-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+            z-index: 10;
         }
 
         .btn-blue {
@@ -92,35 +121,47 @@
             border: 1px solid #546e7a;
         }
 
-        /* Sub Status & Count Row */
-        .header-status-row {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 15px;
-            background: rgba(0, 0, 0, 0.15);
-            padding: 8px 16px;
-            border-radius: 10px;
-            flex-wrap: wrap;
-        }
-
-        .counter-badge {
-            background-color: #2ecc71;
-            color: white;
-            font-size: 1.15em;
-            font-weight: bold;
-            padding: 6px 20px;
-            border-radius: 6px;
-            box-shadow: 0 2px 8px rgba(46, 204, 113, 0.4);
-            white-space: nowrap;
-        }
-
-        #status {
-            font-size: 1em;
-            font-weight: bold;
+        /* Speech Bubble Tooltip (말풍선) */
+        .icon-bubble-btn::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: -34px;
+            right: 0;
+            background: #1e293b;
             color: #ffffff;
-            margin: 0;
+            padding: 4px 10px;
+            font-size: 0.78rem;
+            font-weight: bold;
+            border-radius: 6px;
             white-space: nowrap;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+            z-index: 100;
+            pointer-events: none;
+        }
+
+        /* Speech Bubble Arrow (말풍선 꼬리) */
+        .icon-bubble-btn::before {
+            content: '';
+            position: absolute;
+            bottom: -9px;
+            right: 14px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: transparent transparent #1e293b transparent;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s ease;
+            z-index: 100;
+            pointer-events: none;
+        }
+
+        .icon-bubble-btn:hover::after,
+        .icon-bubble-btn:hover::before {
+            opacity: 1;
+            visibility: visible;
         }
 
         /* Video Container */
@@ -262,38 +303,34 @@
 </head>
 
 <body>
-    <!-- Top Header Container -->
+    <!-- Compact Top Header Container with 2x2 Icon-Only Grid & Speech Bubble Tooltips -->
     <div class="top-header-container">
-        <!-- Top Row: Title + Horizontal Icon Buttons -->
-        <div class="top-header-row">
-            <div class="header-left">
-                <h1>주일 예배 참석 확인</h1>
-            </div>
-
-            <div class="header-nav-bar">
-                <a href="/register" class="icon-nav-btn btn-blue">
-                    <span class="btn-icon">👤</span>
-                    <span class="btn-text">교인 얼굴 등록</span>
-                </a>
-                <a href="/members" class="icon-nav-btn btn-purple">
-                    <span class="btn-icon">👥</span>
-                    <span class="btn-text">교인 명단 & 수정</span>
-                </a>
-                <a href="/stats" class="icon-nav-btn btn-teal">
-                    <span class="btn-icon">📊</span>
-                    <span class="btn-text">출석 통계 & 캘린더</span>
-                </a>
-                <button type="button" class="icon-nav-btn btn-slate" onclick="toggleFlip()">
-                    <span class="btn-icon">🔄</span>
-                    <span class="btn-text">카메라 반전</span>
-                </button>
+        <!-- Left: Title & Sub Status -->
+        <div class="header-left">
+            <h1>주일 예배 참석 확인</h1>
+            <div class="header-sub-info">
+                <span class="counter-badge">오늘 출석 교인 수: <span id="todayCount">0</span>명</span>
+                <span id="status">시스템 준비 중... 잠시만 기다려주세요.</span>
             </div>
         </div>
 
-        <!-- Sub Row: Badge & Status Message -->
-        <div class="header-status-row">
-            <div class="counter-badge">오늘 출석 교인 수: <span id="todayCount">0</span>명</div>
-            <div id="status">시스템 준비 중... 잠시만 기다려주세요.</div>
+        <!-- Right: 2x2 Grid of Icon-Only Buttons with Speech Bubble Tooltips -->
+        <div class="header-right-grid">
+            <!-- Row 1 -->
+            <a href="/register" class="icon-bubble-btn btn-blue" data-tooltip="👤 교인 얼굴 등록">
+                <span>👤</span>
+            </a>
+            <a href="/members" class="icon-bubble-btn btn-purple" data-tooltip="👥 교인 명단 & 수정">
+                <span>👥</span>
+            </a>
+
+            <!-- Row 2 -->
+            <a href="/stats" class="icon-bubble-btn btn-teal" data-tooltip="📊 출석 통계 & 캘린더">
+                <span>📊</span>
+            </a>
+            <button type="button" class="icon-bubble-btn btn-slate" onclick="toggleFlip()" data-tooltip="🔄 카메라 반전 전환">
+                <span>🔄</span>
+            </button>
         </div>
     </div>
 
