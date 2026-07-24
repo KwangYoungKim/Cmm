@@ -643,7 +643,7 @@
                     const height = b.height;
 
                     const isKnown = bestMatch && bestMatch.label !== 'unknown' && score >= 0.70;
-                    const labelText = isKnown ? (memberNamesMap[bestMatch.label] || "등록교인") : "미등록";
+                    const labelText = isKnown ? (memberNamesMap[bestMatch.label] || "등록교인") : "확인중...";
 
                     // 알려진 교인은 초록색(#2ecc71), 미등록 교인은 주황색(#e67e22) 박스
                     ctx.strokeStyle = isKnown ? '#2ecc71' : '#e67e22';
