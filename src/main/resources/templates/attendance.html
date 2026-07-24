@@ -393,6 +393,35 @@
             }, 10000);
         }
 
+        async function reloadFaceMatcher() {
+            try {
+                const response = await fetch('/api/members');
+                const members = await response.json();
+                if (members && members.length > 0) {
+                    allMembersData = members;
+                    populateQuickMemberSelect(members);
+
+                    const labeledDescriptors = members.map(member => {
+                        memberNamesMap[member.id.toString()] = member.name;
+                        const parsed = JSON.parse(member.faceDescriptor);
+                        let float32Arrays = [];
+
+                        if (Array.isArray(parsed) && parsed.length > 0) {
+                            if (Array.isArray(parsed[0])) {
+                                float32Arrays = parsed.map(arr => new Float32Array(arr));
+                            } else {
+                                float32Arrays = [new Float32Array(parsed)];
+                            }
+                        }
+                        return new faceapi.LabeledFaceDescriptors(member.id.toString(), float32Arrays);
+                    });
+                    faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.42);
+                }
+            } catch (e) {
+                console.error("FaceMatcher 갱신 오류:", e);
+            }
+        }
+
         async function quickAppendVectorToMember() {
             const selectedMemberId = quickMemberSelect.value;
             if (!selectedMemberId) {
@@ -417,7 +446,7 @@
                 if (result.success) {
                     alert(result.message);
                     closeUnregisteredModal();
-                    await init(); // 실시간 얼굴 마스커 메모리 갱신
+                    await reloadFaceMatcher(); // 비디오 재시작 없이 메모리 faceMatcher만 경량 갱신 (중복 캔버스 방지)
                     markAttendance(parseInt(selectedMemberId), lastUnknownDescriptor);
                 } else {
                     alert("⚠️ " + result.message);
@@ -581,14 +610,20 @@
                 });
         }
 
+        let detectionInterval = null;
+
         video.addEventListener('play', () => {
+            // 중복 캔버스 및 중복 루프 방지
+            document.querySelectorAll('#video-container canvas').forEach(c => c.remove());
+            if (detectionInterval) clearInterval(detectionInterval);
+
             const canvas = faceapi.createCanvasFromMedia(video);
             document.getElementById('video-container').append(canvas);
             applyFlip();
             const displaySize = { width: video.width, height: video.height };
             faceapi.matchDimensions(canvas, displaySize);
 
-            setInterval(async () => {
+            detectionInterval = setInterval(async () => {
                 if (!faceMatcher || isModalOpen) return;
 
                 const detections = await faceapi.detectAllFaces(video).withFaceLandmarks().withFaceDescriptors();
