@@ -475,8 +475,8 @@
                     return new faceapi.LabeledFaceDescriptors(member.id.toString(), float32Arrays);
                 });
 
-                // 인지 정확도를 극대화하기 위해 임계값을 0.38로 초엄격하게 적용하여 미등록자 오인식 완벽 차단
-                faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.38);
+                // 미등록자 오인식 차단과 기존 등록 교인 원활 인식을 위한 골든 밸런스 임계값 (0.42)
+                faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.42);
 
                 startVideo();
             } catch (e) {
@@ -541,7 +541,7 @@
                     const width = b.width;
                     const height = b.height;
 
-                    const isKnown = bestMatch && bestMatch.label !== 'unknown' && score >= 0.85;
+                    const isKnown = bestMatch && bestMatch.label !== 'unknown' && score >= 0.70;
                     const labelText = isKnown ? (memberNamesMap[bestMatch.label] || "등록교인") : "미등록";
 
                     // 알려진 교인은 초록색(#2ecc71), 미등록 교인은 주황색(#e67e22) 박스
@@ -564,7 +564,7 @@
                     let hasKnownFace = false;
                     for (const detection of detections) {
                         const score = detection.detection ? detection.detection.score : detection.score;
-                        if (score < 0.85) continue; // 신뢰도가 낮거나 흐린 얼굴 무시
+                        if (score < 0.70) continue; // 최소 0.70 이상 선명도 유지
 
                         const bestMatch = faceMatcher.findBestMatch(detection.descriptor);
 
@@ -572,8 +572,8 @@
                             const memberId = parseInt(bestMatch.label);
                             memberMatchFrameCount[memberId] = (memberMatchFrameCount[memberId] || 0) + 1;
 
-                            // 최소 3 프레임 연속 교인으로 정밀 감지되었을 때만 출석 처리 (미등록자 오인식 100% 차단)
-                            if (memberMatchFrameCount[memberId] >= 3) {
+                            // 최소 2 프레임 연속 교인으로 감지되었을 때 출석 인정 (원활한 출석 인식을 위한 2프레임)
+                            if (memberMatchFrameCount[memberId] >= 2) {
                                 hasKnownFace = true;
                                 consecutiveUnknownFrames = 0;
                                 const now = Date.now();

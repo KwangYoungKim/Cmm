@@ -73,12 +73,12 @@ public class AttendanceController {
 
         String trimmedName = name.trim();
 
-        // 1. 동일 인물 얼굴 중복 등록 검사 (벡터거리 < 0.38 - 초엄격 정밀 기준)
+        // 1. 동일 인물 얼굴 중복 등록 검사 (벡터거리 < 0.42 - 골든 밸런스 기준)
         if (faceDescriptor != null) {
             List<Member> allMembers = memberRepository.findAll();
             for (Member existing : allMembers) {
                 double dist = calculateEuclideanDistance(faceDescriptor, existing.getFaceDescriptor());
-                if (dist < 0.38) { // 동일인 얼굴 중복 등록 방지 (0.38 초엄격 기준)
+                if (dist < 0.42) { // 동일인 얼굴 중복 등록 방지 (0.42 최적 기준)
                     String existingPos = existing.getPosition() != null ? existing.getPosition() : "교우";
                     return ResponseEntity.ok(Map.of(
                         "success", false,
