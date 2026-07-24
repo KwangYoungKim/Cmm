@@ -415,7 +415,7 @@
                         }
                         return new faceapi.LabeledFaceDescriptors(member.id.toString(), float32Arrays);
                     });
-                    faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.42);
+                    faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.48);
                 }
             } catch (e) {
                 console.error("FaceMatcher 갱신 오류:", e);
@@ -570,8 +570,8 @@
                     return new faceapi.LabeledFaceDescriptors(member.id.toString(), float32Arrays);
                 });
 
-                // 미등록자 오인식 차단과 기존 등록 교인 원활 인식을 위한 골든 밸런스 임계값 (0.42)
-                faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.42);
+                // 고개 기울임(Roll) 및 쳐듬(Pitch) 시에도 원활히 매칭되도록 0.48 초고응답 임계값 적용
+                faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.48);
 
                 startVideo();
             } catch (e) {

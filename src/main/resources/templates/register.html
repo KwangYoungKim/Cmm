@@ -333,7 +333,7 @@
                         }
                         return new faceapi.LabeledFaceDescriptors(m.id.toString(), float32Arrays);
                     });
-                    faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.42);
+                    faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.48);
                 }
             } catch (e) {
                 console.error("교인 목록 로딩 실패:", e);

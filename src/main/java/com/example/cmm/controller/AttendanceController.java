@@ -325,8 +325,8 @@ public class AttendanceController {
                 }
             }
 
-            // 동일인 확정 조건(minDistance < 0.42) 이면서, 기존에 없던 유의미한 변형 각도/조명 조건(minDistance > 0.12)일 때 자동 축적
-            if (minDistance < 0.42 && minDistance > 0.12) {
+            // 동일인 확정 조건(minDistance < 0.48) 이면서, 기존에 없던 유의미한 변형 각도/조명 조건(minDistance > 0.10)일 때 자동 축적
+            if (minDistance < 0.48 && minDistance > 0.10) {
                 existingList.add(newArr);
 
                 StringBuilder sb = new StringBuilder("[");
