@@ -581,7 +581,7 @@
                                 // 개별 교인 단위 쿨다운(10초) 및 비동기 중복 처리 방지
                                 if (!lastAttendanceTime[memberId] || (now - lastAttendanceTime[memberId] > 10000)) {
                                     if (!pendingMemberIds.has(memberId)) {
-                                        markAttendance(memberId);
+                                        markAttendance(memberId, detection.descriptor);
                                     }
                                 }
                             }
@@ -605,15 +605,20 @@
             }, 500);
         });
 
-        async function markAttendance(memberId) {
+        async function markAttendance(memberId, descriptor) {
             if (pendingMemberIds.has(memberId)) return;
             pendingMemberIds.add(memberId);
 
             try {
+                const payload = { memberId: memberId };
+                if (descriptor) {
+                    payload.descriptor = Array.from(descriptor);
+                }
+
                 const response = await fetch('/api/attendance/check', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ memberId: memberId })
+                    body: JSON.stringify(payload)
                 });
                 const result = await response.json();
 

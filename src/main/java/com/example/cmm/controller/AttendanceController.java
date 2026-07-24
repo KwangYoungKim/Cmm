@@ -224,14 +224,40 @@ public class AttendanceController {
         return ResponseEntity.ok(Map.of("count", count));
     }
 
-    // API: Record attendance (1인 1회 제한 및 시간 정보 반환)
+    // API: Record attendance (1인 1회 제한 및 시간 정보 반환 + 자가 학습 벡터 자동 축적)
     @PostMapping("/api/attendance/check")
     @ResponseBody
-    public ResponseEntity<?> checkAttendance(@RequestBody Map<String, Long> payload) {
-        Long memberId = payload.get("memberId");
+    public ResponseEntity<?> checkAttendance(@RequestBody Map<String, Object> payload) {
+        Long memberId = null;
+        if (payload.get("memberId") instanceof Number) {
+            memberId = ((Number) payload.get("memberId")).longValue();
+        }
+        if (memberId == null) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Member ID is required"));
+        }
+
         Member member = memberRepository.findById(memberId).orElse(null);
         if (member == null) {
             return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Member not found"));
+        }
+
+        // AI 자가 학습: 출석 시 촬영된 얼굴 벡터를 분석하여 신규 각도/표정 벡터 자동 축적
+        if (payload.containsKey("descriptor") && payload.get("descriptor") instanceof List) {
+            try {
+                @SuppressWarnings("unchecked")
+                List<Object> rawList = (List<Object>) payload.get("descriptor");
+                List<Double> doubleList = new ArrayList<>();
+                for (Object item : rawList) {
+                    if (item instanceof Number) {
+                        doubleList.add(((Number) item).doubleValue());
+                    }
+                }
+                if (doubleList.size() == 128) {
+                    appendNewVectorIfDistinct(member, doubleList);
+                }
+            } catch (Exception e) {
+                // Ignore parsing errors
+            }
         }
 
         LocalDate today = LocalDate.now();
@@ -248,7 +274,8 @@ public class AttendanceController {
                 "alreadyChecked", true,
                 "message", member.getName() + " 교우님은 이미 오늘 출석이 확인되셨습니다. (출석시간: " + timeStr + ")",
                 "todayCount", todayCount,
-                "checkInTime", timeStr
+                "checkInTime", timeStr,
+                "updatedDescriptor", member.getFaceDescriptor() != null ? member.getFaceDescriptor() : ""
             ));
         }
 
@@ -264,8 +291,55 @@ public class AttendanceController {
             "alreadyChecked", false,
             "message", member.getName() + " 교우님, 출석 완료! (출석시간: " + timeStr + ")",
             "todayCount", todayCount,
-            "checkInTime", timeStr
+            "checkInTime", timeStr,
+            "updatedDescriptor", member.getFaceDescriptor() != null ? member.getFaceDescriptor() : ""
         ));
+    }
+
+    // AI 자가 학습(Self-Learning) 보조 메서드: 유의미한 상이 각도/조명 벡터 자동 축적 (최대 8개)
+    private void appendNewVectorIfDistinct(Member member, List<Double> newVector) {
+        if (newVector == null || newVector.isEmpty() || member.getFaceDescriptor() == null) return;
+
+        try {
+            List<double[]> existingList = parseDescriptorJson(member.getFaceDescriptor());
+            if (existingList.isEmpty()) return;
+
+            // 저장 벡터 최대 8개 제한 (DB 용량 및 연산 효율 유지)
+            if (existingList.size() >= 8) return;
+
+            double[] newArr = newVector.stream().mapToDouble(Double::doubleValue).toArray();
+
+            // 기존 벡터들과의 최소 거리 계산
+            double minDistance = Double.MAX_VALUE;
+            for (double[] existing : existingList) {
+                double dist = 0.0;
+                for (int i = 0; i < Math.min(newArr.length, existing.length); i++) {
+                    double diff = newArr[i] - existing[i];
+                    dist += diff * diff;
+                }
+                dist = Math.sqrt(dist);
+                if (dist < minDistance) {
+                    minDistance = dist;
+                }
+            }
+
+            // 동일인 확정 조건(minDistance < 0.42) 이면서, 기존에 없던 유의미한 변형 각도/조명 조건(minDistance > 0.12)일 때 자동 축적
+            if (minDistance < 0.42 && minDistance > 0.12) {
+                existingList.add(newArr);
+
+                StringBuilder sb = new StringBuilder("[");
+                for (int i = 0; i < existingList.size(); i++) {
+                    sb.append(Arrays.toString(existingList.get(i)));
+                    if (i < existingList.size() - 1) sb.append(",");
+                }
+                sb.append("]");
+
+                member.setFaceDescriptor(sb.toString());
+                memberRepository.save(member);
+            }
+        } catch (Exception e) {
+            // Self-learning exception ignore
+        }
     }
 
     // API: Record attendance for unregistered visitor (미등록 교인 / 새가족 / 방문자 출석 기록)
