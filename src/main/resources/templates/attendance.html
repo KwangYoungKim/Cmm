@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <title>주일 무인 출석</title>
-    <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+    <script src="/js/face-api.min.js"></script>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -185,6 +185,9 @@
             position: absolute;
             top: 0;
             left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
         }
 
         /* 미등록 교인 안내 모달 */
@@ -343,7 +346,7 @@
         const statusEl = document.getElementById('status');
         const unregisteredModal = document.getElementById('unregisteredModal');
         const quickMemberSelect = document.getElementById('quickMemberSelect');
-        const modelsUrl = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/weights';
+        const modelsUrl = '/models';
 
         let faceMatcher = null;
         let isModalOpen = false;
@@ -533,15 +536,25 @@
         async function init() {
             applyFlip();
             fetchTodayCount();
+            startVideo(); // 카메라 화면 즉시 켜기 (0초 지연)
+
             try {
-                statusEl.innerText = "인공지능 모델을 불러오는 중...";
+                statusEl.innerText = "카메라 연결 완료 • 인공지능 모델 로딩 중...";
                 await Promise.all([
                     faceapi.nets.ssdMobilenetv1.loadFromUri(modelsUrl),
                     faceapi.nets.faceLandmark68Net.loadFromUri(modelsUrl),
                     faceapi.nets.faceRecognitionNet.loadFromUri(modelsUrl)
                 ]);
 
-                statusEl.innerText = "교인 데이터를 불러오는 중...";
+                // WebGL 셰이더 프리워밍 (첫 프레임 영상 멈춤 방지)
+                try {
+                    const dummyCanvas = document.createElement('canvas');
+                    dummyCanvas.width = 100;
+                    dummyCanvas.height = 100;
+                    await faceapi.detectAllFaces(dummyCanvas, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 }));
+                } catch (warmupErr) {}
+
+                statusEl.innerText = "교인 데이터 로딩 중...";
                 const response = await fetch('/api/members');
                 const members = await response.json();
 
@@ -582,8 +595,8 @@
 
                 // 고개 기울임(Roll) 및 쳐듬(Pitch) 시에도 원활히 매칭되도록 0.48 초고응답 임계값 적용
                 faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.48);
-
-                startVideo();
+                statusEl.style.color = '#2ecc71';
+                statusEl.innerText = "카메라를 정면으로 바라봐 주세요.";
             } catch (e) {
                 statusEl.innerText = "초기화 오류: " + e;
             }
@@ -621,6 +634,7 @@
         }
 
         let detectionInterval = null;
+        let isDetecting = false;
 
         video.addEventListener('play', () => {
             // 중복 캔버스 및 중복 루프 방지
@@ -630,90 +644,101 @@
             const canvas = faceapi.createCanvasFromMedia(video);
             document.getElementById('video-container').append(canvas);
             applyFlip();
-            const displaySize = { width: video.width, height: video.height };
-            faceapi.matchDimensions(canvas, displaySize);
 
             detectionInterval = setInterval(async () => {
-                if (!faceMatcher || isModalOpen) return;
+                if (!faceMatcher || isModalOpen || isDetecting) return;
+                isDetecting = true;
 
-                const detections = await faceapi.detectAllFaces(video).withFaceLandmarks().withFaceDescriptors();
-                const resizedDetections = faceapi.resizeResults(detections, displaySize);
-                const ctx = canvas.getContext('2d');
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                try {
+                    const videoWidth = video.videoWidth || video.width || 800;
+                    const videoHeight = video.videoHeight || video.height || 600;
+                    const displaySize = { width: videoWidth, height: videoHeight };
+                    if (canvas.width !== displaySize.width || canvas.height !== displaySize.height) {
+                        canvas.width = displaySize.width;
+                        canvas.height = displaySize.height;
+                        faceapi.matchDimensions(canvas, displaySize);
+                    }
 
-                // 다중인원 박스 및 교인 이름 표시
-                resizedDetections.forEach(detection => {
-                    const b = detection.detection ? detection.detection.box : detection.box;
-                    const score = detection.detection ? detection.detection.score : detection.score;
-                    const bestMatch = faceMatcher ? faceMatcher.findBestMatch(detection.descriptor) : null;
+                    const detections = await faceapi.detectAllFaces(video, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.35 })).withFaceLandmarks().withFaceDescriptors();
+                    const resizedDetections = faceapi.resizeResults(detections, displaySize);
+                    const ctx = canvas.getContext('2d');
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-                    const x = isFlipped ? (displaySize.width - b.x - b.width) : b.x;
-                    const y = b.y;
-                    const width = b.width;
-                    const height = b.height;
-
-                    const isKnown = bestMatch && bestMatch.label !== 'unknown' && score >= 0.70;
-                    const labelText = isKnown ? (memberNamesMap[bestMatch.label] || "등록교인") : "확인중...";
-
-                    // 알려진 교인은 초록색(#2ecc71), 미등록 교인은 주황색(#e67e22) 박스
-                    ctx.strokeStyle = isKnown ? '#2ecc71' : '#e67e22';
-                    ctx.lineWidth = 4;
-                    ctx.strokeRect(x, y, width, height);
-
-                    ctx.font = 'bold 16px sans-serif';
-                    const textWidth = ctx.measureText(labelText).width;
-                    const textY = y > 26 ? y - 26 : y;
-
-                    ctx.fillStyle = isKnown ? '#2ecc71' : '#e67e22';
-                    ctx.fillRect(x, textY, textWidth + 14, 24);
-
-                    ctx.fillStyle = '#ffffff';
-                    ctx.fillText(labelText, x + 7, textY + 17);
-                });
-
-                if (detections.length > 0) {
-                    let hasKnownFace = false;
-                    for (const detection of detections) {
+                    // 다중인원 박스 및 교인 이름 표시
+                    resizedDetections.forEach(detection => {
+                        const b = detection.detection ? detection.detection.box : detection.box;
                         const score = detection.detection ? detection.detection.score : detection.score;
-                        if (score < 0.70) continue; // 최소 0.70 이상 선명도 유지
+                        const bestMatch = faceMatcher ? faceMatcher.findBestMatch(detection.descriptor) : null;
 
-                        const bestMatch = faceMatcher.findBestMatch(detection.descriptor);
+                        const x = isFlipped ? (displaySize.width - b.x - b.width) : b.x;
+                        const y = b.y;
+                        const width = b.width;
+                        const height = b.height;
 
-                        if (bestMatch.label !== 'unknown') {
-                            const memberId = parseInt(bestMatch.label);
-                            memberMatchFrameCount[memberId] = (memberMatchFrameCount[memberId] || 0) + 1;
+                        const isKnown = bestMatch && bestMatch.label !== 'unknown' && score >= 0.65;
+                        const labelText = isKnown ? (memberNamesMap[bestMatch.label] || "등록교인") : "확인중...";
 
-                            // 최소 2 프레임 연속 교인으로 감지되었을 때 출석 인정 (원활한 출석 인식을 위한 2프레임)
-                            if (memberMatchFrameCount[memberId] >= 2) {
-                                hasKnownFace = true;
-                                consecutiveUnknownFrames = 0;
-                                const now = Date.now();
+                        // 알려진 교인은 초록색(#2ecc71), 미등록 교인은 주황색(#e67e22) 박스
+                        ctx.strokeStyle = isKnown ? '#2ecc71' : '#e67e22';
+                        ctx.lineWidth = 4;
+                        ctx.strokeRect(x, y, width, height);
 
-                                // 개별 교인 단위 쿨다운(10초) 및 비동기 중복 처리 방지
-                                if (!lastAttendanceTime[memberId] || (now - lastAttendanceTime[memberId] > 10000)) {
-                                    if (!pendingMemberIds.has(memberId)) {
-                                        markAttendance(memberId, detection.descriptor);
+                        ctx.font = 'bold 16px sans-serif';
+                        const textWidth = ctx.measureText(labelText).width;
+                        const textY = y > 26 ? y - 26 : y;
+
+                        ctx.fillStyle = isKnown ? '#2ecc71' : '#e67e22';
+                        ctx.fillRect(x, textY, textWidth + 14, 24);
+
+                        ctx.fillStyle = '#ffffff';
+                        ctx.fillText(labelText, x + 7, textY + 17);
+                    });
+
+                    if (detections.length > 0) {
+                        let hasKnownFace = false;
+                        for (const detection of detections) {
+                            const score = detection.detection ? detection.detection.score : detection.score;
+                            if (score < 0.65) continue;
+
+                            const bestMatch = faceMatcher.findBestMatch(detection.descriptor);
+
+                            if (bestMatch.label !== 'unknown') {
+                                const memberId = parseInt(bestMatch.label);
+                                memberMatchFrameCount[memberId] = (memberMatchFrameCount[memberId] || 0) + 1;
+
+                                if (memberMatchFrameCount[memberId] >= 2) {
+                                    hasKnownFace = true;
+                                    consecutiveUnknownFrames = 0;
+                                    const now = Date.now();
+
+                                    if (!lastAttendanceTime[memberId] || (now - lastAttendanceTime[memberId] > 10000)) {
+                                        if (!pendingMemberIds.has(memberId)) {
+                                            markAttendance(memberId, detection.descriptor);
+                                        }
                                     }
                                 }
                             }
                         }
-                    }
 
-                    // 감지된 사람 중 등록 교인이 없는 경우 미등록 안내 처리
-                    if (!hasKnownFace) {
-                        consecutiveUnknownFrames++;
-                        const now = Date.now();
-                        if (consecutiveUnknownFrames >= 8 && (now - lastUnknownPromptTime > 12000)) {
-                            showUnregisteredModal(detections[0] ? detections[0].descriptor : null);
+                        if (!hasKnownFace) {
+                            consecutiveUnknownFrames++;
+                            const now = Date.now();
+                            if (consecutiveUnknownFrames >= 6 && (now - lastUnknownPromptTime > 12000)) {
+                                showUnregisteredModal(detections[0] ? detections[0].descriptor : null);
+                                consecutiveUnknownFrames = 0;
+                            }
+                        } else {
                             consecutiveUnknownFrames = 0;
                         }
                     } else {
                         consecutiveUnknownFrames = 0;
                     }
-                } else {
-                    consecutiveUnknownFrames = 0;
+                } catch (err) {
+                    console.error("얼굴 인식 오류:", err);
+                } finally {
+                    isDetecting = false;
                 }
-            }, 500);
+            }, 200);
         });
 
         async function markAttendance(memberId, descriptor) {

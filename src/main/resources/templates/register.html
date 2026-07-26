@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>다각도 3포즈 교인 얼굴 등록</title>
-    <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+    <script src="/js/face-api.min.js"></script>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -261,6 +261,9 @@
             position: absolute;
             top: 0;
             left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
         }
     </style>
 </head>
@@ -355,7 +358,7 @@
         const registerBtn = document.getElementById('registerBtn');
         const resetPoseBtn = document.getElementById('resetPoseBtn');
 
-        const modelsUrl = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/weights';
+        const modelsUrl = '/models';
 
         let isFlipped = localStorage.getItem('cameraFlipped') === 'true';
         let faceMatcher = null;
@@ -551,16 +554,33 @@
             applyFlip();
         }
 
-        Promise.all([
-            faceapi.nets.ssdMobilenetv1.loadFromUri(modelsUrl),
-            faceapi.nets.faceLandmark68Net.loadFromUri(modelsUrl),
-            faceapi.nets.faceRecognitionNet.loadFromUri(modelsUrl)
-        ]).then(() => {
-            loadExistingMembers();
-            startVideo();
-        }).catch(err => {
-            statusEl.innerText = "모델 로딩 실패: " + err;
-        });
+        async function init() {
+            applyFlip();
+            startVideo(); // 카메라 화면 즉시 켜기 (0초 지연)
+
+            try {
+                statusEl.innerText = "카메라 연결 완료 • 인공지능 모델 로딩 중...";
+                await Promise.all([
+                    faceapi.nets.ssdMobilenetv1.loadFromUri(modelsUrl),
+                    faceapi.nets.faceLandmark68Net.loadFromUri(modelsUrl),
+                    faceapi.nets.faceRecognitionNet.loadFromUri(modelsUrl)
+                ]);
+
+                // WebGL 셰이더 프리워밍 (첫 프레임 영상 멈춤 방지)
+                try {
+                    const dummyCanvas = document.createElement('canvas');
+                    dummyCanvas.width = 100;
+                    dummyCanvas.height = 100;
+                    await faceapi.detectAllFaces(dummyCanvas, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 }));
+                } catch (warmupErr) {}
+
+                loadExistingMembers();
+            } catch (err) {
+                statusEl.innerText = "모델 로딩 실패: " + err;
+            }
+        }
+
+        window.onload = init;
 
         function startVideo() {
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -597,87 +617,106 @@
                 });
         }
 
+        let isDetecting = false;
         video.addEventListener('play', () => {
+            document.querySelectorAll('#video-container canvas').forEach(c => c.remove());
+
             const canvas = faceapi.createCanvasFromMedia(video);
             document.getElementById('video-container').append(canvas);
             applyFlip();
-            const displaySize = { width: video.width, height: video.height };
-            faceapi.matchDimensions(canvas, displaySize);
 
             setInterval(async () => {
-                const detections = await faceapi.detectAllFaces(video).withFaceLandmarks().withFaceDescriptors();
-                const resizedDetections = faceapi.resizeResults(detections, displaySize);
-                const ctx = canvas.getContext('2d');
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                
-                resizedDetections.forEach(detection => {
-                    const b = detection.detection ? detection.detection.box : detection.box;
-                    const score = detection.detection ? detection.detection.score : detection.score;
-                    
-                    const x = isFlipped ? (displaySize.width - b.x - b.width) : b.x;
-                    const y = b.y;
-                    const width = b.width;
-                    const height = b.height;
+                if (isDetecting) return;
+                isDetecting = true;
 
-                    ctx.strokeStyle = '#38bdf8';
-                    ctx.lineWidth = 3;
-                    ctx.strokeRect(x, y, width, height);
-
-                    if (score !== undefined) {
-                        const scoreText = (Math.round(score * 100) / 100).toFixed(2);
-                        ctx.font = 'bold 14px sans-serif';
-                        const textWidth = ctx.measureText(scoreText).width;
-                        const textY = y > 22 ? y - 22 : y;
-                        
-                        ctx.fillStyle = '#0284c7';
-                        ctx.fillRect(x, textY, textWidth + 10, 20);
-                        
-                        ctx.fillStyle = '#ffffff';
-                        ctx.fillText(scoreText, x + 5, textY + 14);
+                try {
+                    const videoWidth = video.videoWidth || video.width || 640;
+                    const videoHeight = video.videoHeight || video.height || 480;
+                    const displaySize = { width: videoWidth, height: videoHeight };
+                    if (canvas.width !== displaySize.width || canvas.height !== displaySize.height) {
+                        canvas.width = displaySize.width;
+                        canvas.height = displaySize.height;
+                        faceapi.matchDimensions(canvas, displaySize);
                     }
-                });
 
-                if (detections.length === 1) {
-                    window.currentDescriptor = detections[0].descriptor;
-                    window.currentDetection = detections[0];
+                    const detections = await faceapi.detectAllFaces(video, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.35 })).withFaceLandmarks().withFaceDescriptors();
+                    const resizedDetections = faceapi.resizeResults(detections, displaySize);
+                    const ctx = canvas.getContext('2d');
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
                     
-                    let matchedName = null;
-                    if (faceMatcher) {
-                        const bestMatch = faceMatcher.findBestMatch(detections[0].descriptor);
-                        if (bestMatch.label !== 'unknown') {
-                            matchedName = registeredMembersMap[bestMatch.label];
+                    resizedDetections.forEach(detection => {
+                        const b = detection.detection ? detection.detection.box : detection.box;
+                        const score = detection.detection ? detection.detection.score : detection.score;
+                        
+                        const x = isFlipped ? (displaySize.width - b.x - b.width) : b.x;
+                        const y = b.y;
+                        const width = b.width;
+                        const height = b.height;
+
+                        ctx.strokeStyle = '#38bdf8';
+                        ctx.lineWidth = 3;
+                        ctx.strokeRect(x, y, width, height);
+
+                        if (score !== undefined) {
+                            const scoreText = (Math.round(score * 100) / 100).toFixed(2);
+                            ctx.font = 'bold 14px sans-serif';
+                            const textWidth = ctx.measureText(scoreText).width;
+                            const textY = y > 22 ? y - 22 : y;
+                            
+                            ctx.fillStyle = '#0284c7';
+                            ctx.fillRect(x, textY, textWidth + 10, 20);
+                            
+                            ctx.fillStyle = '#ffffff';
+                            ctx.fillText(scoreText, x + 5, textY + 14);
                         }
-                    }
+                    });
 
-                    if (matchedName) {
-                        statusEl.style.color = '#f87171';
-                        statusEl.innerText = "⚠️ 이미 등록된 얼굴입니다. (등록명: " + matchedName + ")";
-                        capturePoseBtn.disabled = true;
-                    } else if (nameInput.value.trim() !== '') {
-                        if (capturedDescriptors.length < 3) {
-                            capturePoseBtn.disabled = false;
-                            if (capturedDescriptors.length === 0) {
-                                statusEl.style.color = '#38bdf8';
-                                statusEl.innerText = "Step 1: 정면을 바라보고 우측 📸 (1단계 캡처) 버튼을 누르세요.";
+                    if (detections.length === 1) {
+                        window.currentDescriptor = detections[0].descriptor;
+                        window.currentDetection = detections[0];
+                        
+                        let matchedName = null;
+                        if (faceMatcher) {
+                            const bestMatch = faceMatcher.findBestMatch(detections[0].descriptor);
+                            if (bestMatch.label !== 'unknown') {
+                                matchedName = registeredMembersMap[bestMatch.label];
                             }
                         }
-                    } else {
-                        statusEl.style.color = '#ecf0f1';
-                        statusEl.innerText = "얼굴 인식 완료. 교인 성명을 먼저 입력해 주세요.";
+
+                        if (matchedName) {
+                            statusEl.style.color = '#f87171';
+                            statusEl.innerText = "⚠️ 이미 등록된 얼굴입니다. (등록명: " + matchedName + ")";
+                            capturePoseBtn.disabled = true;
+                        } else if (nameInput.value.trim() !== '') {
+                            if (capturedDescriptors.length < 3) {
+                                capturePoseBtn.disabled = false;
+                                if (capturedDescriptors.length === 0) {
+                                    statusEl.style.color = '#38bdf8';
+                                    statusEl.innerText = "Step 1: 정면을 바라보고 우측 📸 (1단계 캡처) 버튼을 누르세요.";
+                                }
+                            }
+                        } else {
+                            statusEl.style.color = '#ecf0f1';
+                            statusEl.innerText = "얼굴 인식 완료. 교인 성명을 먼저 입력해 주세요.";
+                            capturePoseBtn.disabled = true;
+                        }
+                    } else if (detections.length > 1) {
                         capturePoseBtn.disabled = true;
+                        statusEl.style.color = '#f87171';
+                        statusEl.innerText = "화면에 한 분만 나와주세요.";
+                    } else {
+                        capturePoseBtn.disabled = true;
+                        if (capturedDescriptors.length === 0) {
+                            statusEl.style.color = '#ecf0f1';
+                            statusEl.innerText = "얼굴을 찾을 수 없습니다.";
+                        }
                     }
-                } else if (detections.length > 1) {
-                    capturePoseBtn.disabled = true;
-                    statusEl.style.color = '#f87171';
-                    statusEl.innerText = "화면에 한 분만 나와주세요.";
-                } else {
-                    capturePoseBtn.disabled = true;
-                    if (capturedDescriptors.length === 0) {
-                        statusEl.style.color = '#ecf0f1';
-                        statusEl.innerText = "얼굴을 찾을 수 없습니다.";
-                    }
+                } catch (err) {
+                    console.error("얼굴 감지 에러:", err);
+                } finally {
+                    isDetecting = false;
                 }
-            }, 1000);
+            }, 250);
         });
 
         function captureThumbnail(detection) {
